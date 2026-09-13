@@ -38,7 +38,7 @@ export async function initStoriesBar() {
     ring.style.textAlign = "center";
     ring.innerHTML = `
       <a href="story-view.html?u=${encodeURIComponent(author.username)}" class="story-ring">
-        <img src="${author.avatar_url || phAvatar(60)}" alt="">
+        <img width="60" height="60" src="${author.avatar_url || phAvatar(60)}" alt="">
       </a>
       <div class="story-label">${escapeHtml(author.username)}</div>
     `;
