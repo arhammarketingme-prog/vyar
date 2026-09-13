@@ -33,6 +33,18 @@
     color: var(--vyra-text);
     font-size: 14px;
   }
+  #canvas-wrap { position: relative; }
+  #tip-sticker-marker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    background: var(--vyra-accent);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    pointer-events: none;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -41,7 +53,10 @@
     <h1 style="color:var(--vyra-accent); font-size:22px;">New story</h1>
     <p class="muted">Disappears after 24 hours.</p>
 
-    <canvas id="story-canvas" width="450" height="800"></canvas>
+    <div id="canvas-wrap">
+      <canvas id="story-canvas" width="450" height="800"></canvas>
+      <div id="tip-sticker-marker" class="hidden">💰 Tip</div>
+    </div>
 
     <input type="file" id="story-media-input" accept="image/*">
 
@@ -49,6 +64,7 @@
       <button type="button" class="tool-btn" id="add-text-btn">🅣 Text</button>
       <button type="button" class="tool-btn" id="draw-toggle-btn">✏️ Draw</button>
       <input type="color" id="draw-color-input" value="#ffffff" style="width:40px; height:36px; padding:0; border-radius:8px;">
+      <button type="button" class="tool-btn hidden" id="tip-sticker-btn" style="background:var(--vyra-accent); border-color:var(--vyra-accent);">💰 Tip Sticker</button>
     </div>
 
     <p class="muted" style="margin-bottom:4px;">Stickers (tap to add, tap canvas to move)</p>

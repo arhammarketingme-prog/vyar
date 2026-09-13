@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New highlight — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">New highlight</h1>
+    <p class="muted">Pick stories to keep on your profile permanently.</p>
+    <div id="story-picker-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:16px;"></div>
+    <form id="create-highlight-form">
+      <input type="text" name="title" placeholder="Highlight name (e.g. Trips, Recipes)" maxlength="30" required>
+      <button type="submit" class="btn">Create</button>
+    </form>
+  </div>
+  <script type="module">
+    import { initCreateHighlight } from "../js/highlights.js";
+    initCreateHighlight();
+  </script>
+</body>
+</html>

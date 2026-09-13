@@ -244,6 +244,31 @@ already expects), not its pixel-level look:
   no UI) — tap "Reply" under a comment, it pre-fills @username, and
   replies render indented under their parent.
 
+**Original additions (not just copying Instagram — building on what VYRA
+already has):**
+- Story Highlights: pick any of your own stories (even expired ones — the
+  data isn't deleted, just hidden from the 24h feed) and pin them to a
+  named highlight shown permanently on your profile
+  (`/pages/create-highlight.html`, viewer at `/pages/highlight-view.html`).
+  No new story data is duplicated — a highlight just references existing
+  stories.
+- Story replies go straight into real DMs: instead of a separate
+  ephemeral "story reply" system, replying to someone's story sends a
+  normal message through the same Realtime chat already built in
+  Phase 6 — one messaging system instead of two.
+
+- **Tip Sticker on Stories** — a real differentiator, not an Instagram
+  feature copy: Instagram/TikTok can't put a direct bank-transfer button
+  in a story without giving Apple/Google a cut, because App Store rules
+  treat that as a "digital tip" requiring in-app purchase. VYRA is a
+  website, so that rule doesn't apply — a story can carry a genuinely
+  tappable "💰 Tip" button. Only shows up if you've set a UPI ID (Edit
+  Profile); place it anywhere on the story while creating it. It's stored
+  as a position (not baked into the image), so it renders as a real
+  button for viewers, opening their UPI app with the amount ready to
+  send — same honest ledger + real-payment-happens-outside-VYRA pattern
+  as profile tips.
+
 ## What's next
 
 - AI captions/hashtags/translation via a secure Edge Function

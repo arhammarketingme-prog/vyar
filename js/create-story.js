@@ -7,8 +7,10 @@ let backgroundColor = "#ff5d3b";
 let textItems = [];          // {text, x, y, color}
 let stickerItems = [];       // {emoji, x, y}
 let drawPaths = [];          // {points:[{x,y}], color}
+let tipSticker = null;       // {x, y} — NOT baked into the image, stored separately
 let activeItem = null;       // last placed text/sticker — tap-to-move target
 let drawMode = false;
+let tipStickerPlacementMode = false;
 let currentDrawColor = "#ffffff";
 let session = null;
 
@@ -21,6 +23,18 @@ export async function initCreateStory() {
   canvas = document.getElementById("story-canvas");
   ctx = canvas.getContext("2d");
   render();
+
+  const { data: profile } = await supabase.from("profiles").select("upi_id").eq("id", session.user.id).single();
+  if (profile?.upi_id) {
+    document.getElementById("tip-sticker-btn").classList.remove("hidden");
+  }
+  document.getElementById("tip-sticker-btn").addEventListener("click", () => {
+    tipStickerPlacementMode = true;
+    if (!tipSticker) tipSticker = { x: 0.5, y: 0.85 };
+    positionTipMarker();
+    document.getElementById("tip-sticker-marker").classList.remove("hidden");
+    alert("Tap anywhere on the story to place the Tip button.");
+  });
 
   document.getElementById("story-media-input").addEventListener("change", handleImageSelect);
   document.getElementById("add-text-btn").addEventListener("click", handleAddText);
@@ -82,14 +96,27 @@ export async function initCreateStory() {
   canvas.addEventListener("touchend", endDraw);
 
   canvas.addEventListener("click", (e) => {
-    if (drawMode || !activeItem) return;
     const pos = getPos(e);
+    if (tipStickerPlacementMode) {
+      tipSticker = { x: pos.x / canvas.width, y: pos.y / canvas.height };
+      tipStickerPlacementMode = false;
+      positionTipMarker();
+      return;
+    }
+    if (drawMode || !activeItem) return;
     activeItem.x = pos.x;
     activeItem.y = pos.y;
     render();
   });
 
   document.getElementById("create-story-form").addEventListener("submit", handleSubmit);
+}
+
+function positionTipMarker() {
+  if (!tipSticker) return;
+  const marker = document.getElementById("tip-sticker-marker");
+  marker.style.left = `${tipSticker.x * 100}%`;
+  marker.style.top = `${tipSticker.y * 100}%`;
 }
 
 function handleImageSelect() {
@@ -183,6 +210,8 @@ async function handleSubmit(e) {
       author_id: session.user.id,
       media_type: "image",
       storage_path: path,
+      tip_sticker_x: tipSticker?.x ?? null,
+      tip_sticker_y: tipSticker?.y ?? null,
     });
     if (insertErr) throw insertErr;
 

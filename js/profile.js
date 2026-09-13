@@ -1,4 +1,5 @@
 import { supabase, requireAuth, showError, phAvatar, verifiedBadge } from "./supabaseClient.js";
+import { initHighlightsBar } from "./highlights.js";
 
 export async function initProfile() {
   const session = await requireAuth();
@@ -30,6 +31,7 @@ export async function initProfile() {
     slot.appendChild(msgLink);
   }
   await renderPostsGrid(profile.id);
+  await initHighlightsBar(profile.id, isOwnProfile);
 }
 
 function renderProfile(profile, isOwnProfile, session) {
@@ -66,6 +68,7 @@ function renderProfile(profile, isOwnProfile, session) {
       ` : ""}
       ${isOwnProfile ? `<button class="btn btn-secondary" id="logout-btn">Log out</button>` : ""}
     </div>
+    <div id="highlights-bar" class="story-bar"></div>
     <div id="posts-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;"></div>
   `;
 

@@ -30,6 +30,11 @@
     cursor: pointer;
     overflow: hidden;
   }
+  #story-content {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
   .story-progress-row {
     position: absolute;
     top: 8px; left: 8px; right: 8px;
@@ -62,10 +67,42 @@
     font-weight: 600;
     text-align: center;
   }
+  .story-reply-bar {
+    position: absolute;
+    bottom: 16px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    gap: 8px;
+    z-index: 3;
+  }
+  .story-reply-bar input {
+    flex: 1;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 20px;
+    padding: 10px 14px;
+    color: white;
+    font-size: 14px;
+  }
+  .story-reply-bar input::placeholder { color: rgba(255,255,255,0.7); }
+  .story-reply-bar button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
-  <div id="story-root">Loading...</div>
+  <div id="story-root">
+    <div id="story-content">Loading...</div>
+    <form id="story-reply-form" class="story-reply-bar" style="display:none;">
+      <input type="text" name="reply" placeholder="Reply..." autocomplete="off">
+      <button type="submit">➤</button>
+    </form>
+  </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module">
     import { initStoryView } from "../js/story-view.js";

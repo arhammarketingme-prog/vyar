@@ -1369,3 +1369,62 @@ as $$
          or (b.blocker_id = viewer and b.blocked_id = owner)
     );
 $$;
+
+-- =====================================================================
+-- PART 13: Story Highlights (permanent, curated stories on a profile)
+-- Reuses the existing stories table — a highlight just references
+-- stories that would otherwise disappear after 24h, so no story data is
+-- duplicated.
+-- =====================================================================
+
+create table if not exists public.highlights (
+  id uuid primary key default uuid_generate_v4(),
+  owner_id uuid not null references public.profiles(id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 30),
+  cover_color text default '#ff5d3b',
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.highlight_items (
+  highlight_id uuid not null references public.highlights(id) on delete cascade,
+  story_id uuid not null references public.stories(id) on delete cascade,
+  position integer not null default 0,
+  primary key (highlight_id, story_id)
+);
+
+alter table public.highlights enable row level security;
+alter table public.highlight_items enable row level security;
+
+drop policy if exists "highlights are viewable respecting owner privacy" on public.highlights;
+create policy "highlights are viewable respecting owner privacy"
+  on public.highlights for select
+  using (public.can_view_profile(owner_id, auth.uid()));
+
+drop policy if exists "owners manage their own highlights" on public.highlights;
+create policy "owners manage their own highlights"
+  on public.highlights for all
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+drop policy if exists "highlight items inherit highlight visibility" on public.highlight_items;
+create policy "highlight items inherit highlight visibility"
+  on public.highlight_items for select
+  using (exists (select 1 from public.highlights h where h.id = highlight_id and public.can_view_profile(h.owner_id, auth.uid())));
+
+drop policy if exists "owner manages items in their own highlights" on public.highlight_items;
+create policy "owner manages items in their own highlights"
+  on public.highlight_items for all
+  using (exists (select 1 from public.highlights h where h.id = highlight_id and h.owner_id = auth.uid()))
+  with check (exists (select 1 from public.highlights h where h.id = highlight_id and h.owner_id = auth.uid()));
+
+-- =====================================================================
+-- PART 14: Tip Sticker on Stories — a real differentiator.
+-- Big app-store-distributed platforms (Instagram, TikTok) can't put a
+-- direct bank-transfer button in a story without giving Apple/Google a
+-- cut of "digital tips" — that's an App Store policy constraint, not a
+-- technical one. VYRA is a website, so this restriction doesn't apply:
+-- a story can carry a real, tappable UPI tip button.
+-- =====================================================================
+
+alter table public.stories add column if not exists tip_sticker_x numeric(4,3);
+alter table public.stories add column if not exists tip_sticker_y numeric(4,3);
