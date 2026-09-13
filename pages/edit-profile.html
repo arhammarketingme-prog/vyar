@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Edit profile — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Edit profile</h1>
+    <div class="card">
+      <form id="edit-profile-form">
+        <label class="muted" style="display:block; margin-bottom:4px;">Profile photo</label>
+        <img id="avatar-preview" src="" style="width:80px; height:80px; border-radius:50%; object-fit:cover; display:none; margin-bottom:8px;">
+        <input type="file" id="avatar-input" accept="image/*">
+
+        <input type="text" name="display_name" placeholder="Display name">
+        <textarea name="bio" placeholder="Bio" rows="3"></textarea>
+        <input type="text" name="website" placeholder="Website">
+        <input type="text" name="location" placeholder="Location">
+
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <input type="checkbox" name="is_business" style="width:auto; margin:0;"> Business account
+        </label>
+        <input type="text" name="business_category" placeholder="Business category (e.g. Restaurant, Salon, Tailor)">
+        <input type="text" name="contact_phone" placeholder="Contact phone">
+        <input type="text" name="business_hours" placeholder="Opening hours (e.g. Mon-Sat 10am-8pm)">
+
+        <label class="muted" style="display:block; margin-bottom:4px;">
+          UPI ID (for receiving tips directly via GPay/PhonePe/Paytm — optional)
+        </label>
+        <input type="text" name="upi_id" placeholder="yourname@upi">
+
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <input type="checkbox" name="is_private" style="width:auto; margin:0;"> Private account
+        </label>
+
+        <div id="edit-profile-error" class="error hidden"></div>
+        <button type="submit" class="btn">Save</button>
+      </form>
+    </div>
+  </div>
+  <script type="module">
+    import { initEditProfile } from "../js/edit-profile.js";
+    initEditProfile();
+  </script>
+</body>
+</html>

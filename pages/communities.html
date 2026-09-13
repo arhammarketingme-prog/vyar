@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Communities — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Communities</h1>
+    <div id="communities-list"></div>
+
+    <h3>Start a community</h3>
+    <div class="card">
+      <form id="new-community-form">
+        <input type="text" name="name" placeholder="Community name" required>
+        <textarea name="description" placeholder="What's it about?" rows="2"></textarea>
+        <select name="visibility">
+          <option value="public">Public</option>
+          <option value="private">Private</option>
+          <option value="invite_only">Invite-only</option>
+        </select>
+        <div id="new-community-error" class="error hidden"></div>
+        <button type="submit" class="btn">Create</button>
+      </form>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initCommunities } from "../js/communities.js";
+    initCommunities();
+  </script>
+</body>
+</html>

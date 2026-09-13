@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Profile — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <div id="profile-root">Loading...</div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html" class="active">👤</a>
+  </nav>
+  <script type="module">
+    import { initProfile } from "../js/profile.js";
+    initProfile();
+  </script>
+</body>
+</html>

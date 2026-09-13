@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Creator Studio — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Creator Studio</h1>
+
+    <h3>Overview</h3>
+    <div id="overview-grid" class="stat-grid"><p class="muted">Loading...</p></div>
+
+    <h3>Top posts</h3>
+    <div id="top-posts"></div>
+
+    <h3>Earnings <span class="muted" style="font-weight:normal;">(recorded, not yet paid via gateway)</span></h3>
+    <div id="earnings-summary" class="stat-grid"></div>
+    <div id="earnings-list" style="margin-top:8px;"></div>
+    <p class="muted">Payouts are tracked here but not yet automated — see the README for what's needed to connect a real payment gateway.</p>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initCreatorStudio } from "../js/creator-studio.js";
+    initCreatorStudio();
+  </script>
+</body>
+</html>

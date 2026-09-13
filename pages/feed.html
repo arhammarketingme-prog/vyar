@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Feed — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px; display:flex; justify-content:space-between; align-items:center;">
+      VYRA
+      <a href="notifications.html" id="bell-link" style="font-size:20px; text-decoration:none; position:relative;">
+        🔔<span id="bell-badge" class="hidden" style="position:absolute; top:-4px; right:-8px; background:var(--vyra-accent); color:white; font-size:10px; border-radius:10px; padding:1px 5px;"></span>
+      </a>
+    </h1>
+    <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+      <a href="reels.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🎬 Reels</a>
+      <a href="collections.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📁 Collections</a>
+      <a href="communities.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">👥 Communities</a>
+      <a href="messages.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">💬 Messages</a>
+    </div>
+    <div id="stories-bar" class="story-bar"></div>
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <button id="tab-foryou" class="btn" style="width:auto; padding:6px 16px; font-size:13px;">For You</button>
+      <button id="tab-recommended" class="btn btn-secondary" style="width:auto; padding:6px 16px; font-size:13px;">Recommended</button>
+    </div>
+    <div id="feed"></div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html" class="active">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initFeed, loadRecommended } from "../js/feed.js";
+    import { initStoriesBar } from "../js/stories-bar.js";
+    initFeed();
+    initStoriesBar();
+
+    import("../js/supabaseClient.js").then(async ({ supabase }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("recipient_id", session.user.id)
+        .is("read_at", null);
+      if (count > 0) {
+        const badge = document.getElementById("bell-badge");
+        badge.textContent = count > 9 ? "9+" : count;
+        badge.classList.remove("hidden");
+      }
+    });
+
+    document.getElementById("tab-foryou").addEventListener("click", (e) => {
+      e.target.classList.remove("btn-secondary");
+      document.getElementById("tab-recommended").classList.add("btn-secondary");
+      document.getElementById("feed").innerHTML = "";
+      initFeed();
+    });
+    document.getElementById("tab-recommended").addEventListener("click", (e) => {
+      e.target.classList.remove("btn-secondary");
+      document.getElementById("tab-foryou").classList.add("btn-secondary");
+      document.getElementById("feed").innerHTML = "";
+      loadRecommended();
+    });
+  </script>
+</body>
+</html>

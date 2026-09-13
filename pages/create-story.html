@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>New story — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  #story-canvas {
+    width: 100%;
+    aspect-ratio: 9/16;
+    border-radius: 16px;
+    background: #000;
+    touch-action: none;
+    display: block;
+    margin-bottom: 12px;
+  }
+  .tool-row {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 0 12px 0;
+  }
+  .tool-btn {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--vyra-border);
+    background: var(--vyra-surface);
+    color: var(--vyra-text);
+    font-size: 14px;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">New story</h1>
+    <p class="muted">Disappears after 24 hours.</p>
+
+    <canvas id="story-canvas" width="450" height="800"></canvas>
+
+    <input type="file" id="story-media-input" accept="image/*">
+
+    <div class="tool-row">
+      <button type="button" class="tool-btn" id="add-text-btn">🅣 Text</button>
+      <button type="button" class="tool-btn" id="draw-toggle-btn">✏️ Draw</button>
+      <input type="color" id="draw-color-input" value="#ffffff" style="width:40px; height:36px; padding:0; border-radius:8px;">
+    </div>
+
+    <p class="muted" style="margin-bottom:4px;">Stickers (tap to add, tap canvas to move)</p>
+    <div class="tool-row">
+      <button type="button" class="tool-btn" data-sticker="😀">😀</button>
+      <button type="button" class="tool-btn" data-sticker="🔥">🔥</button>
+      <button type="button" class="tool-btn" data-sticker="❤️">❤️</button>
+      <button type="button" class="tool-btn" data-sticker="🎉">🎉</button>
+      <button type="button" class="tool-btn" data-sticker="👍">👍</button>
+      <button type="button" class="tool-btn" data-sticker="😂">😂</button>
+      <button type="button" class="tool-btn" data-sticker="✨">✨</button>
+      <button type="button" class="tool-btn" data-sticker="📍">📍</button>
+    </div>
+
+    <p class="muted" style="margin-bottom:4px;">Filters (only apply to an uploaded photo)</p>
+    <div class="tool-row">
+      <button type="button" class="tool-btn" data-filter="none">Normal</button>
+      <button type="button" class="tool-btn" data-filter="grayscale(1)">B&W</button>
+      <button type="button" class="tool-btn" data-filter="sepia(0.7)">Sepia</button>
+      <button type="button" class="tool-btn" data-filter="brightness(1.2) saturate(1.4)">Vivid</button>
+      <button type="button" class="tool-btn" data-filter="contrast(1.3)">Contrast</button>
+    </div>
+
+    <p class="muted" style="margin-bottom:4px;">Background (only shows if you don't upload a photo)</p>
+    <div class="tool-row">
+      <button type="button" class="tool-btn" data-bg="#ff5d3b" style="background:#ff5d3b;">&nbsp;</button>
+      <button type="button" class="tool-btn" data-bg="#7c5cff" style="background:#7c5cff;">&nbsp;</button>
+      <button type="button" class="tool-btn" data-bg="#0ea5e9" style="background:#0ea5e9;">&nbsp;</button>
+      <button type="button" class="tool-btn" data-bg="#16a34a" style="background:#16a34a;">&nbsp;</button>
+      <button type="button" class="tool-btn" data-bg="#171717" style="background:#171717;">&nbsp;</button>
+    </div>
+
+    <form id="create-story-form">
+      <div id="create-story-error" class="error hidden"></div>
+      <button type="submit" class="btn">Post Story</button>
+    </form>
+  </div>
+  <script type="module">
+    import { initCreateStory } from "../js/create-story.js";
+    initCreateStory();
+  </script>
+</body>
+</html>

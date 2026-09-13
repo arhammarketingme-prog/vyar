@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Promote — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Promote a post</h1>
+    <p class="muted">Submitted campaigns go through review before they start showing in feeds — usually within a day.</p>
+    <div id="promote-root">
+      <div class="card">
+        <form id="promote-form">
+          <label class="muted" style="display:block; margin-bottom:4px;">Which post?</label>
+          <select id="promote-post-select"></select>
+
+          <label class="muted" style="display:block; margin-bottom:4px;">Objective</label>
+          <select name="objective">
+            <option value="brand_awareness">Brand Awareness</option>
+            <option value="website_traffic">Website Traffic</option>
+            <option value="local_promotion">Local Promotion</option>
+            <option value="lead_generation">Lead Generation</option>
+          </select>
+
+          <input type="number" name="budget" placeholder="Budget in ₹ (e.g. 500)" min="1" required>
+          <input type="text" name="target_language" placeholder="Target language (optional, e.g. Marathi)">
+          <input type="text" name="target_location" placeholder="Target location (optional, e.g. Satara, 10km)">
+
+          <div id="promote-error" class="error hidden"></div>
+          <button type="submit" class="btn">Submit for review</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initPromote } from "../js/promote.js";
+    initPromote();
+  </script>
+</body>
+</html>

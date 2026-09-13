@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Products — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Products</h1>
+    <p class="muted">Buying happens on the external link you provide (your own store, WhatsApp, Instagram shop, etc) — VYRA doesn't process payments.</p>
+    <div id="products-list"></div>
+
+    <h3>Add product</h3>
+    <div class="card">
+      <form id="new-product-form">
+        <input type="text" name="name" placeholder="Product name" required>
+        <textarea name="description" placeholder="Description" rows="2"></textarea>
+        <input type="number" name="price" placeholder="Price in ₹ (optional)" min="1">
+        <input type="url" name="external_url" placeholder="Link to buy/order (required)" required>
+        <input type="file" id="product-image-input" accept="image/*">
+        <div id="new-product-error" class="error hidden"></div>
+        <button type="submit" class="btn">Add product</button>
+      </form>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initProducts } from "../js/products.js";
+    initProducts();
+  </script>
+</body>
+</html>

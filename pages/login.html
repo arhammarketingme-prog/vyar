@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Log in — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent);">VYRA</h1>
+    <div class="card">
+      <h2>Log in</h2>
+      <form id="login-form">
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <div id="login-error" class="error hidden"></div>
+        <button type="submit" class="btn">Log in</button>
+      </form>
+    </div>
+    <p class="muted">New here? <a href="signup.html" style="color:var(--vyra-accent);">Create an account</a></p>
+  </div>
+  <script type="module">
+    import { bindLoginForm } from "../js/auth.js";
+    bindLoginForm(document.getElementById("login-form"), document.getElementById("login-error"));
+  </script>
+</body>
+</html>

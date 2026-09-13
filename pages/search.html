@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Search — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <input type="text" id="search-input" placeholder="Search users or #hashtags" autofocus>
+
+    <h3>Users</h3>
+    <div id="search-users"></div>
+
+    <h3>Local Businesses</h3>
+    <div id="search-business"></div>
+
+    <h3>Hashtags</h3>
+    <div id="search-tags"></div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initSearch } from "../js/search.js";
+    initSearch();
+  </script>
+</body>
+</html>

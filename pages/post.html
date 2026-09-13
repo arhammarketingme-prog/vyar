@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Post — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <div id="post-root">Loading...</div>
+    <div id="tagged-product"></div>
+    <h3>Comments</h3>
+    <form id="comment-form" style="display:flex; gap:8px;">
+      <input type="text" name="content" placeholder="Add a comment..." style="margin-bottom:0;">
+      <button type="submit" class="btn" style="width:auto;">Post</button>
+    </form>
+    <div id="comment-error" class="error hidden"></div>
+    <div id="comments-list"></div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initPostDetail } from "../js/post.js";
+    initPostDetail();
+  </script>
+</body>
+</html>

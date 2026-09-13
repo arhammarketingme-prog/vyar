@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Sign up — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent);">VYRA</h1>
+    <div class="card">
+      <h2>Create account</h2>
+      <form id="signup-form">
+        <input type="text" name="username" placeholder="Username (lowercase, no spaces)" pattern="[a-z0-9_.]{3,30}" required>
+        <input type="text" name="displayName" placeholder="Display name">
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password (min 8 characters)" minlength="8" required>
+        <div id="signup-error" class="error hidden"></div>
+        <button type="submit" class="btn">Sign up</button>
+      </form>
+    </div>
+    <p class="muted">Already have an account? <a href="login.html" style="color:var(--vyra-accent);">Log in</a></p>
+  </div>
+  <script type="module">
+    import { bindSignupForm } from "../js/auth.js";
+    bindSignupForm(document.getElementById("signup-form"), document.getElementById("signup-error"));
+  </script>
+</body>
+</html>

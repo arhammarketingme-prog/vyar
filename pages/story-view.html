@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Story — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { margin: 0; padding: 0; }
+  #story-root {
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+  }
+  .story-progress-row {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px;
+    display: flex;
+    gap: 4px;
+  }
+  .story-progress-bar {
+    height: 3px;
+    flex: 1;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+  }
+  .story-progress-bar.filled, .story-progress-bar.active { background: white; }
+  .story-header {
+    position: absolute;
+    top: 20px; left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  .story-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div id="story-root">Loading...</div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module">
+    import { initStoryView } from "../js/story-view.js";
+    initStoryView();
+  </script>
+</body>
+</html>

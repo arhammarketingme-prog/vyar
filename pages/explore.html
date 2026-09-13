@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Explore — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Explore</h1>
+    <a href="search.html" class="btn btn-secondary" style="display:block; margin-bottom:16px;">🔍 Search users & hashtags</a>
+
+    <h3>Trending</h3>
+    <div id="trending-tags" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px;">
+      <p class="muted">Loading...</p>
+    </div>
+
+    <h3>Discover</h3>
+    <div id="explore-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;"></div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html" class="active">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initExplore } from "../js/explore.js";
+    initExplore();
+  </script>
+</body>
+</html>

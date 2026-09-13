@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Collections — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Collections</h1>
+    <div id="collections-list"></div>
+
+    <h3>New collection</h3>
+    <div class="card">
+      <form id="new-collection-form">
+        <input type="text" name="name" placeholder="Collection name (e.g. Recipes)" required>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <input type="checkbox" name="is_private" checked style="width:auto; margin:0;"> Private
+        </label>
+        <div id="new-collection-error" class="error hidden"></div>
+        <button type="submit" class="btn">Create</button>
+      </form>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initCollections } from "../js/collections.js";
+    initCollections();
+  </script>
+</body>
+</html>

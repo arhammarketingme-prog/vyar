@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>New post — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">New post</h1>
+    <div class="card">
+      <form id="create-post-form">
+        <div style="display:flex; gap:16px; margin-bottom:12px;">
+          <label><input type="radio" name="post_type" value="post" checked> Photo Post</label>
+          <label><input type="radio" name="post_type" value="reel"> Reel (video)</label>
+        </div>
+        <input type="file" id="media-input" name="media" accept="image/*" multiple required>
+        <div id="preview"></div>
+        <label class="muted" style="display:block; margin-bottom:4px;">Post to a community (optional)</label>
+        <select name="community_id" id="community-select">
+          <option value="">My profile (default)</option>
+        </select>
+
+        <textarea name="caption" placeholder="Write a caption... use #hashtags" rows="4"></textarea>
+        <label class="muted" style="display:block; margin-bottom:4px;">Tag a product (optional)</label>
+        <select name="product_id" id="product-select">
+          <option value="">None</option>
+        </select>
+        <div id="create-post-error" class="error hidden"></div>
+        <button type="submit" class="btn">Share</button>
+      </form>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html" class="active">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initCreatePost } from "../js/create-post.js";
+    initCreatePost();
+  </script>
+</body>
+</html>

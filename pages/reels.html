@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Reels — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { margin: 0; padding: 0; background: black; }
+  #reels-container {
+    height: 100vh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+  }
+  .reel-slide {
+    height: 100vh;
+    scroll-snap-align: start;
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+  }
+  .reel-overlay {
+    position: absolute;
+    bottom: 70px;
+    left: 16px;
+    right: 16px;
+    color: white;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+  <div id="reels-container"></div>
+  <nav class="bottom-nav" style="position:fixed;">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module">
+    import { initReels } from "../js/reels.js";
+    initReels();
+  </script>
+</body>
+</html>

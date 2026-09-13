@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#ff5d3b">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<title>Chat — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { display: flex; flex-direction: column; height: 100vh; margin: 0; }
+  #messages-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; }
+  #chat-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--vyra-border); }
+  #chat-form input { margin-bottom: 0; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div style="padding:12px; border-bottom:1px solid var(--vyra-border);">
+    <a href="messages.html" style="color:var(--vyra-accent);">← Back</a>
+    <strong id="chat-header" style="margin-left:8px;">Loading...</strong>
+  </div>
+  <div id="messages-list"></div>
+  <form id="chat-form">
+    <input type="text" name="content" placeholder="Message..." autocomplete="off">
+    <button type="submit" class="btn" style="width:auto;">Send</button>
+  </form>
+  <script type="module">
+    import { initChat } from "../js/chat.js";
+    initChat();
+  </script>
+</body>
+</html>
