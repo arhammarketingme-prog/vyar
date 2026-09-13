@@ -1,4 +1,4 @@
-import { supabase, requireAuth, showError, phAvatar } from "./supabaseClient.js";
+import { supabase, requireAuth, showError, phAvatar, timeAgo, verifiedBadge } from "./supabaseClient.js";
 
 export async function initPostDetail() {
   const session = await requireAuth();
@@ -11,7 +11,7 @@ export async function initPostDetail() {
     .from("posts")
     .select(`
       id, caption, created_at,
-      author:profiles!posts_author_id_fkey ( id, username, avatar_url ),
+      author:profiles!posts_author_id_fkey ( id, username, avatar_url, is_verified ),
       post_media ( storage_path, position, media_type ),
       post_products ( product:products ( id, name, price_inr, image_storage_path, external_url ) )
     `)
@@ -78,7 +78,8 @@ function renderPost(post, session) {
     <div class="card">
       <div class="post-header">
         <img class="avatar" width="36" height="36" src="${post.author.avatar_url || phAvatar(40)}" alt="">
-        <strong>${escapeHtml(post.author.username)}</strong>
+        <strong>${escapeHtml(post.author.username)}${verifiedBadge(post.author.is_verified)}</strong>
+        <span class="muted" style="margin-left:8px;">· ${timeAgo(post.created_at)}</span>
         <div style="margin-left:auto; display:flex; gap:8px;">
           ${isOwner ? `<button id="delete-post-btn" class="muted" style="background:none; border:none; cursor:pointer;">🗑️ Delete</button>` : `<button id="report-post-btn" class="muted" style="background:none; border:none; cursor:pointer;">🚩 Report</button>`}
         </div>
@@ -159,16 +160,51 @@ async function renderCollectionPicker(postId) {
 async function loadComments(postId) {
   const { data: comments, error } = await supabase
     .from("comments")
-    .select(`id, content, created_at, author:profiles!comments_author_id_fkey ( username )`)
+    .select(`id, content, created_at, parent_comment_id, author:profiles!comments_author_id_fkey ( username, is_verified )`)
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
   if (error || !comments) return;
 
+  const topLevel = comments.filter((c) => !c.parent_comment_id);
+  const repliesByParent = new Map();
+  comments.filter((c) => c.parent_comment_id).forEach((c) => {
+    if (!repliesByParent.has(c.parent_comment_id)) repliesByParent.set(c.parent_comment_id, []);
+    repliesByParent.get(c.parent_comment_id).push(c);
+  });
+
   const list = document.getElementById("comments-list");
-  list.innerHTML = comments
-    .map((c) => `<div class="card"><strong>${escapeHtml(c.author.username)}</strong> ${linkifyCaption(c.content)}</div>`)
+  list.innerHTML = topLevel
+    .map((c) => {
+      const replies = repliesByParent.get(c.id) || [];
+      const repliesHtml = replies
+        .map(
+          (r) => `
+          <div class="card" style="margin-left:24px; margin-top:4px;">
+            <strong>${escapeHtml(r.author.username)}${verifiedBadge(r.author.is_verified)}</strong> ${linkifyCaption(r.content)}
+            <div class="muted" style="font-size:11px;">${timeAgo(r.created_at)}</div>
+          </div>`
+        )
+        .join("");
+      return `
+        <div class="card">
+          <strong>${escapeHtml(c.author.username)}${verifiedBadge(c.author.is_verified)}</strong> ${linkifyCaption(c.content)}
+          <div class="muted" style="font-size:11px;">
+            ${timeAgo(c.created_at)} · <button data-reply-to="${c.id}" data-reply-name="${escapeHtml(c.author.username)}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">Reply</button>
+          </div>
+        </div>
+        ${repliesHtml}`;
+    })
     .join("");
+
+  list.querySelectorAll("[data-reply-to]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = document.querySelector('#comment-form input[name="content"]');
+      input.value = `@${btn.dataset.replyName} `;
+      input.dataset.parentId = btn.dataset.replyTo;
+      input.focus();
+    });
+  });
 }
 
 function bindCommentForm(postId, session) {
@@ -178,16 +214,19 @@ function bindCommentForm(postId, session) {
     e.preventDefault();
     const content = form.content.value.trim();
     if (!content) return;
+    const parentId = form.content.dataset.parentId || null;
     const { error } = await supabase.from("comments").insert({
       post_id: postId,
       author_id: session.user.id,
       content,
+      parent_comment_id: parentId,
     });
     if (error) {
       showError(errEl, error);
       return;
     }
     form.content.value = "";
+    delete form.content.dataset.parentId;
     await loadComments(postId);
   });
 }

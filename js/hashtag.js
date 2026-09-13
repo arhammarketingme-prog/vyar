@@ -17,7 +17,7 @@ export async function initHashtagFeed() {
 
   const { data: links } = await supabase
     .from("post_hashtags")
-    .select("post:posts(id, caption, like_count, comment_count, post_media(storage_path, position), author:profiles!posts_author_id_fkey(username, avatar_url))")
+    .select("post:posts(id, caption, like_count, comment_count, post_media(storage_path, position), author:profiles!posts_author_id_fkey(username, avatar_url, is_verified))")
     .eq("hashtag_id", hashtag.id);
 
   const feed = document.getElementById("hashtag-feed");

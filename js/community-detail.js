@@ -28,7 +28,7 @@ export async function initCommunityDetail() {
     .from("posts")
     .select(`
       id, caption, like_count, comment_count,
-      author:profiles!posts_author_id_fkey(username, avatar_url),
+      author:profiles!posts_author_id_fkey(username, avatar_url, is_verified),
       post_media(storage_path, position)
     `)
     .eq("community_id", communityId)

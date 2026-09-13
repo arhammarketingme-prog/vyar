@@ -225,6 +225,25 @@ To test locally instead: any static server works, e.g. `python -m http.server
   size before the stylesheet finishes loading on a slow connection —
   this was a real, reproducible bug on slow networks, not a one-off.
 
+**UX polish pass (a note on intent):** the original brief explicitly said
+not to clone Instagram's exact visual design (to keep VYRA's own identity
+and avoid copying proprietary UI) — so this pass matches Instagram's
+*conventions and interaction patterns* (things any social app user
+already expects), not its pixel-level look:
+- Relative timestamps ("2h", "3d") on every post and comment, instead of
+  no timestamp at all.
+- Verified badge (✓): the `is_verified` column existed since Phase 1 but
+  was never shown anywhere — now it appears next to a username on posts,
+  profiles, and comments wherever it's true.
+- Double-tap a post's image to like it, with a brief heart animation —
+  now wired on the main feed.
+- "View all N comments" under each feed post links straight to the full
+  comment thread.
+- Comment replies: threaded replies now work end-to-end (the
+  `parent_comment_id` column existed in the schema since Phase 1 but had
+  no UI) — tap "Reply" under a comment, it pre-fills @username, and
+  replies render indented under their parent.
+
 ## What's next
 
 - AI captions/hashtags/translation via a secure Edge Function

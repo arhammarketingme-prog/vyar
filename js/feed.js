@@ -1,4 +1,4 @@
-import { supabase, requireAuth, phAvatar } from "./supabaseClient.js";
+import { supabase, requireAuth, phAvatar, timeAgo, verifiedBadge } from "./supabaseClient.js";
 
 const PAGE_SIZE = 10;
 let cursor = null;   // created_at of the last loaded post, for pagination
@@ -33,7 +33,7 @@ async function loadActiveCampaigns() {
       id, objective,
       post:posts!campaigns_post_id_fkey (
         id, caption, post_media(storage_path, position),
-        author:profiles!posts_author_id_fkey(username, avatar_url)
+        author:profiles!posts_author_id_fkey(username, avatar_url, is_verified)
       )
     `)
     .eq("status", "active")
@@ -49,7 +49,7 @@ async function loadMore() {
     .from("posts")
     .select(`
       id, caption, created_at, like_count, comment_count, post_type,
-      author:profiles!posts_author_id_fkey ( id, username, avatar_url ),
+      author:profiles!posts_author_id_fkey ( id, username, avatar_url, is_verified ),
       post_media ( storage_path, position, media_type, alt_text ),
       likes ( user_id ),
       saves ( user_id )
@@ -148,7 +148,7 @@ export async function loadRecommended() {
     .from("posts")
     .select(`
       id, caption, created_at, like_count, comment_count, save_count, post_type,
-      author:profiles!posts_author_id_fkey ( id, username, avatar_url ),
+      author:profiles!posts_author_id_fkey ( id, username, avatar_url, is_verified ),
       post_media ( storage_path, position, media_type, alt_text ),
       likes ( user_id ),
       saves ( user_id )
@@ -181,22 +181,43 @@ function renderPost(post) {
   el.innerHTML = `
     <div class="post-header">
       <img class="avatar" width="36" height="36" src="${post.author.avatar_url || phAvatar(40)}" alt="">
-      <strong>${escapeHtml(post.author.username)}</strong>
+      <strong>${escapeHtml(post.author.username)}${verifiedBadge(post.author.is_verified)}</strong>
+      <span class="muted" style="margin-left:8px;">· ${timeAgo(post.created_at)}</span>
       ${post.post_type === "reel" ? `<span class="muted" style="margin-left:auto;">🎬 Reel</span>` : ""}
     </div>
-    <div class="post-media">
+    <div class="post-media" style="position:relative;">
       ${renderCarousel(mediaList)}
+      <div class="like-burst" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:80px; opacity:0; pointer-events:none; transition:opacity 0.2s, transform 0.2s; transform:scale(0.8);">❤️</div>
     </div>
     <div class="post-actions">
       <button data-action="like" class="${likedByMe ? "active" : ""}">${likedByMe ? "♥" : "♡"}</button>
       <button data-action="comment">💬</button>
       <button data-action="save" class="${savedByMe ? "active" : ""}">${savedByMe ? "🔖" : "📑"}</button>
     </div>
-    <div class="muted"><span class="like-count">${post.like_count}</span> likes · <span class="comment-count">${post.comment_count}</span> comments</div>
+    <div class="muted"><span class="like-count">${post.like_count}</span> likes</div>
     <div>${linkifyCaption(post.caption || "")}</div>
+    <a href="post.html?id=${post.id}" class="muted comment-count" style="display:block; margin-top:4px;">View all ${post.comment_count} comments</a>
   `;
 
-  el.querySelector('[data-action="like"]').addEventListener("click", (e) => toggleLike(post.id, likedByMe, e.target));
+  const likeBtn = el.querySelector('[data-action="like"]');
+  const mediaEl = el.querySelector(".post-media");
+  const burst = el.querySelector(".like-burst");
+
+  const doLike = () => {
+    if (!likeBtn.classList.contains("active")) toggleLike(post.id, false, likeBtn);
+    burst.style.opacity = "1";
+    burst.style.transform = "scale(1.1)";
+    setTimeout(() => (burst.style.opacity = "0"), 500);
+  };
+
+  let lastTap = 0;
+  mediaEl.addEventListener("click", () => {
+    const now = Date.now();
+    if (now - lastTap < 300) doLike();
+    lastTap = now;
+  });
+
+  likeBtn.addEventListener("click", (e) => toggleLike(post.id, likeBtn.classList.contains("active"), e.target));
   el.querySelector('[data-action="save"]').addEventListener("click", (e) => toggleSave(post.id, savedByMe, e.target));
   el.querySelector('[data-action="comment"]').addEventListener("click", () => {
     window.location.href = `post.html?id=${post.id}`;
