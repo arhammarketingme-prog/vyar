@@ -1278,7 +1278,7 @@ begin
     select p.id, p.username
     from public.profiles p
     where p.username = any (
-      array(select lower(substring(x from 2)) from regexp_matches(coalesce(p_text, ''), '@([a-z0-9_.]{3,30})', 'gi') as t(x))
+      array(select lower(x[1]) from regexp_matches(coalesce(p_text, ''), '@([a-z0-9_.]{3,30})', 'gi') as t(x))
     )
   loop
     if m.id <> p_actor_id then

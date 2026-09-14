@@ -215,6 +215,7 @@ function handleAddText() {
 function toggleDrawMode() {
   drawMode = !drawMode;
   document.getElementById("draw-toggle-btn").textContent = drawMode ? "✏️ Drawing ON" : "✏️ Draw";
+  canvas.style.touchAction = drawMode ? "none" : "pan-y";
 }
 
 function render() {
