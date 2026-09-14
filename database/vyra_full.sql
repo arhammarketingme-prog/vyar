@@ -1428,3 +1428,84 @@ create policy "owner manages items in their own highlights"
 
 alter table public.stories add column if not exists tip_sticker_x numeric(4,3);
 alter table public.stories add column if not exists tip_sticker_y numeric(4,3);
+
+-- =====================================================================
+-- PART 15: Interactive Story Stickers — Poll, Question, Emoji Slider
+-- Real interactivity (stored responses), not just decorative emoji.
+-- =====================================================================
+
+create table if not exists public.story_stickers (
+  id uuid primary key default uuid_generate_v4(),
+  story_id uuid not null references public.stories(id) on delete cascade,
+  type text not null check (type in ('poll', 'question', 'slider')),
+  x numeric(4,3) not null,
+  y numeric(4,3) not null,
+  config jsonb not null, -- poll: {question, options:[a,b]} · question: {prompt} · slider: {emoji}
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.story_sticker_responses (
+  id uuid primary key default uuid_generate_v4(),
+  sticker_id uuid not null references public.story_stickers(id) on delete cascade,
+  viewer_id uuid not null references public.profiles(id) on delete cascade,
+  response jsonb not null, -- poll: {option_index} · question: {text} · slider: {value}
+  created_at timestamptz not null default now(),
+  unique (sticker_id, viewer_id)
+);
+
+create index if not exists idx_sticker_story on public.story_stickers (story_id);
+create index if not exists idx_sticker_responses on public.story_sticker_responses (sticker_id);
+
+alter table public.story_stickers enable row level security;
+alter table public.story_sticker_responses enable row level security;
+
+drop policy if exists "stickers are viewable if the story is viewable" on public.story_stickers;
+create policy "stickers are viewable if the story is viewable"
+  on public.story_stickers for select
+  using (exists (select 1 from public.stories s where s.id = story_id and public.can_view_profile(s.author_id, auth.uid())));
+
+drop policy if exists "story author adds stickers to their own story" on public.story_stickers;
+create policy "story author adds stickers to their own story"
+  on public.story_stickers for insert
+  with check (exists (select 1 from public.stories s where s.id = story_id and s.author_id = auth.uid()));
+
+drop policy if exists "responses visible to the responder, story author, or as poll aggregate" on public.story_sticker_responses;
+create policy "responses visible to the responder, story author, or as poll aggregate"
+  on public.story_sticker_responses for select
+  using (
+    viewer_id = auth.uid()
+    or exists (
+      select 1 from public.story_stickers st join public.stories s on s.id = st.story_id
+      where st.id = sticker_id and s.author_id = auth.uid()
+    )
+    or exists (
+      select 1 from public.story_stickers st join public.stories s on s.id = st.story_id
+      where st.id = sticker_id and st.type = 'poll' and public.can_view_profile(s.author_id, auth.uid())
+    )
+  );
+
+drop policy if exists "viewers can respond as themselves" on public.story_sticker_responses;
+create policy "viewers can respond as themselves"
+  on public.story_sticker_responses for insert
+  with check (auth.uid() = viewer_id);
+
+drop policy if exists "viewers can update their own response" on public.story_sticker_responses;
+create policy "viewers can update their own response"
+  on public.story_sticker_responses for update
+  using (auth.uid() = viewer_id);
+
+-- =====================================================================
+-- PART 16: Quiz and Countdown stickers (completing the sticker set)
+-- =====================================================================
+
+alter table public.story_stickers drop constraint if exists story_stickers_type_check;
+alter table public.story_stickers add constraint story_stickers_type_check
+  check (type in ('poll', 'question', 'slider', 'quiz', 'countdown'));
+
+-- quiz config: {question, options:[...], correct_index}
+-- quiz response: {option_index, correct: boolean}
+-- countdown config: {label, target_time (ISO string)}
+-- countdown response: {reminder: true} — logs interest only; VYRA has no
+-- push-notification infrastructure yet, so "remind me" does not actually
+-- send a notification at the target time. Said plainly so it isn't
+-- mistaken for a working reminder.

@@ -269,6 +269,18 @@ already has):**
   send — same honest ledger + real-payment-happens-outside-VYRA pattern
   as profile tips.
 
+- Interactive story stickers — real Instagram parity, not decoration:
+  **📊 Poll** (two options, live vote percentages), **❓ Question** (open
+  text box; answers land in the responder's account *and* go straight
+  into a real DM to you, same one-messaging-system pattern as story
+  replies), **😍 Emoji Slider** (1–5 rating, average shown to you),
+  **🧠 Quiz** (multiple choice with a correct answer; viewers get instant
+  right/wrong feedback, you see the % who got it right), **⏳ Countdown**
+  (a live ticking timer with a "🔔 Remind me" button). One honest caveat:
+  "Remind me" only records interest — VYRA has no push-notification
+  infrastructure yet, so nobody actually gets pinged when the countdown
+  ends. That's a real gap, not a hidden one.
+
 ## What's next
 
 - AI captions/hashtags/translation via a secure Edge Function
