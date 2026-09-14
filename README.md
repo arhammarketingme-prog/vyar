@@ -307,24 +307,29 @@ already has):**
   ranked by followers) and Popular Reels, alongside the existing
   trending hashtags and discovery grid.
 
-**Honestly still missing from the original spec** (flagging clearly
-rather than skipping silently):
-- 2FA and social login (Google/Facebook sign-in) — both need extra
-  provider setup in Supabase Auth, not just app code.
-- Voice/image messages in DMs (text-only for now).
-- Comment pinning/sorting/creator moderation controls beyond delete/report.
-- Community events, discussions-as-a-separate-type, and moderator tools
-  beyond the owner/moderator role existing in the schema.
-- Full admin panel (user management, report review/action UI, feature
-  flags) — only Analytics exists; reports and campaigns still require
-  the Supabase SQL editor to act on.
-- Rate limiting, audit logs, and malware scanning on uploads — these
-  need either Supabase Edge Functions or a third-party service.
-- Adaptive video streaming / multiple resolutions — Supabase Storage
-  serves the original file as-is; a real transcoding pipeline is a
-  separate infrastructure project.
-- Deep multi-language coverage of every screen (the mechanism works;
-  most screens still need their strings tagged).
+**Second catch-up batch:**
+- **2FA** (`/pages/security.html`): real TOTP two-factor auth using
+  Supabase's built-in MFA — no external provider needed. Scan the QR
+  code with any authenticator app (Google Authenticator, Authy, etc);
+  login then asks for the 6-digit code after your password.
+- **DM image attachments**: the 📷 icon in chat lets you send a photo,
+  not just text.
+- **Admin moderation** (`/pages/admin-moderation.html`, linked from
+  Analytics): review reports (mark reviewed/dismissed) and grant or
+  revoke the verified ✓ badge by username — both used to require the
+  Supabase SQL editor, now have a real UI.
+
+**Still missing** (updated list):
+- Social login (Google/Facebook) — needs you to create OAuth apps in
+  their developer consoles and add the credentials in Supabase Auth
+  settings; I can walk through that whenever you're ready.
+- Comment pinning/sorting, community events, moderator action tools
+  beyond the report/verify flow above.
+- Full user management in the admin panel (suspend/ban a user) — the
+  report review exists, but there's no "disable this account" action yet.
+- Rate limiting, audit logs, and malware scanning on uploads.
+- Adaptive video streaming / multiple resolutions.
+- Deep multi-language coverage of every remaining screen.
 
 ## What's next
 

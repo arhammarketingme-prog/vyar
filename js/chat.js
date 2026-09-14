@@ -45,12 +45,33 @@ export async function initChat() {
     });
     // Realtime subscription above will render it — no need to render twice.
   });
+
+  const imageInput = document.getElementById("chat-image-input");
+  imageInput.addEventListener("change", async () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    const ext = file.name.split(".").pop();
+    const path = `${session.user.id}/dm/${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from("post-media").upload(path, file, { contentType: file.type });
+    if (uploadErr) {
+      alert(uploadErr.message);
+      return;
+    }
+    const mediaUrl = supabase.storage.from("post-media").getPublicUrl(path).data.publicUrl;
+    await supabase.from("direct_messages").insert({
+      sender_id: session.user.id,
+      recipient_id: otherUserId,
+      content: "📷 Photo",
+      media_url: mediaUrl,
+    });
+    imageInput.value = "";
+  });
 }
 
 async function loadMessages(myId, otherUserId) {
   const { data: messages } = await supabase
     .from("direct_messages")
-    .select("id, sender_id, content, created_at")
+    .select("id, sender_id, content, created_at, media_url")
     .or(
       `and(sender_id.eq.${myId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${myId})`
     )
@@ -72,7 +93,14 @@ function appendMessage(m, myId) {
     border-radius: 14px;
     ${isMine ? "margin-left:auto; background:var(--vyra-accent); color:white;" : "background:var(--vyra-surface); border:1px solid var(--vyra-border);"}
   `;
-  bubble.textContent = m.content;
+  if (m.media_url) {
+    const img = document.createElement("img");
+    img.src = m.media_url;
+    img.style.cssText = "max-width:100%; border-radius:8px; display:block;";
+    bubble.appendChild(img);
+  } else {
+    bubble.textContent = m.content;
+  }
   list.appendChild(bubble);
   list.scrollTop = list.scrollHeight;
 }

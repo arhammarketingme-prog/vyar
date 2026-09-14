@@ -1613,3 +1613,19 @@ create policy "comments are viewable respecting post visibility"
       )
     )
   );
+
+-- =====================================================================
+-- PART 19: DM image attachments + admin moderation actions
+-- (2FA uses Supabase's built-in MFA — no schema change needed for that)
+-- =====================================================================
+
+alter table public.direct_messages add column if not exists media_url text;
+
+-- =====================================================================
+-- PART 20: Admin can grant/revoke the verified badge
+-- =====================================================================
+
+drop policy if exists "users can update their own profile" on public.profiles;
+create policy "users can update their own profile"
+  on public.profiles for update
+  using (auth.uid() = id or public.is_current_user_admin());

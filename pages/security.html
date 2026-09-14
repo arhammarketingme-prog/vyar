@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Security</h1>
+    <div class="card">
+      <h3>Two-factor authentication</h3>
+      <p class="muted">Adds a 6-digit code (from an app like Google Authenticator) on top of your password when logging in.</p>
+      <div id="mfa-status"></div>
+      <div id="enroll-section">
+        <button id="enroll-btn" class="btn">Set up 2FA</button>
+        <div id="qr-wrap" style="margin-top:12px; text-align:center;"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import { initSecurity } from "../js/security.js";
+    initSecurity();
+  </script>
+</body>
+</html>

@@ -64,6 +64,7 @@ function renderProfile(profile, isOwnProfile, session) {
           <a href="ads-dashboard.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📢 Ads</a>
           <a href="products.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🛍️ Products</a>
           <a href="analytics.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📈 Analytics</a>
+          <a href="security.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🔒 Security</a>
         </div>
       ` : ""}
       ${isOwnProfile ? `<button class="btn btn-secondary" id="logout-btn">Log out</button>` : ""}

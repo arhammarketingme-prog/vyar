@@ -55,6 +55,20 @@ export function bindLoginForm(formEl, errEl) {
     const password = formEl.password.value;
     try {
       await signInWithPassword({ email, password });
+
+      // If this account has 2FA on, the session is only "aal1" so far —
+      // prompt for the 6-digit code before letting them into the app.
+      const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (level.nextLevel === "aal2" && level.currentLevel !== level.nextLevel) {
+        const { data: factors } = await supabase.auth.mfa.listFactors();
+        const factor = factors.totp[0];
+        const code = prompt("Enter the 6-digit code from your authenticator app:");
+        const { data: challenge, error: challengeErr } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+        if (challengeErr) throw challengeErr;
+        const { error: verifyErr } = await supabase.auth.mfa.verify({ factorId: factor.id, challengeId: challenge.id, code });
+        if (verifyErr) throw verifyErr;
+      }
+
       window.location.href = "feed.html";
     } catch (err) {
       showError(errEl, err);

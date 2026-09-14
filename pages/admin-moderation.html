@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Moderation — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:var(--vyra-accent); font-size:22px;">Admin Moderation</h1>
+    <div id="admin-root">
+      <h3>Grant / revoke verified badge</h3>
+      <div class="card">
+        <form id="verify-form">
+          <input type="text" name="username" placeholder="username" required>
+          <button type="submit" class="btn">Toggle verified ✓</button>
+        </form>
+        <div id="verify-msg" class="muted"></div>
+      </div>
+
+      <h3>Reports</h3>
+      <div id="reports-list"></div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initAdminModeration } from "../js/admin-moderation.js";
+    initAdminModeration();
+  </script>
+</body>
+</html>
