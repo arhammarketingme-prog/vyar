@@ -104,6 +104,7 @@ export async function initCreatePost() {
           storage_path: path,
           media_type: file.type.startsWith("video") ? "video" : "image",
           position: i,
+          alt_text: i === 0 ? form.alt_text.value.trim() : null,
         });
         if (mediaErr) throw mediaErr;
       }

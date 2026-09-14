@@ -281,6 +281,51 @@ already has):**
   infrastructure yet, so nobody actually gets pinged when the countdown
   ends. That's a real gap, not a hidden one.
 
+**Master-spec catch-up pass:**
+- **Multi-language UI (real, partial coverage):** an i18n framework
+  (`js/i18n.js`) with English/Marathi/Hindi dictionaries, a language
+  picker on Edit Profile (saved to your account + this browser), and
+  translated navigation/labels on the Feed page. This is the real
+  mechanism working end-to-end — extending it to every remaining screen
+  is just adding more `data-i18n` tags and dictionary entries, following
+  the same pattern already in place. It does **not** translate
+  user-generated content (captions, bios, comments) — only VYRA's own
+  interface text.
+- Account recovery: a real "Forgot password" flow
+  (`/pages/forgot-password.html` → email link → `/pages/reset-password.html`),
+  using Supabase's built-in reset flow.
+- Following-only feed tab, alongside For You and Recommended.
+- Comment likes (❤️ + count on every comment and reply).
+- Restrict: a lighter alternative to block/mute — a restricted person's
+  comments become invisible to everyone except themselves and the post
+  author, enforced at the database level, and they're never told they've
+  been restricted.
+- Accessibility: an actual alt-text field when creating a photo post
+  (the column existed since Phase 1 but had no input — screen readers
+  now get real descriptions where provided).
+- Explore: added Suggested Accounts (people you don't yet follow,
+  ranked by followers) and Popular Reels, alongside the existing
+  trending hashtags and discovery grid.
+
+**Honestly still missing from the original spec** (flagging clearly
+rather than skipping silently):
+- 2FA and social login (Google/Facebook sign-in) — both need extra
+  provider setup in Supabase Auth, not just app code.
+- Voice/image messages in DMs (text-only for now).
+- Comment pinning/sorting/creator moderation controls beyond delete/report.
+- Community events, discussions-as-a-separate-type, and moderator tools
+  beyond the owner/moderator role existing in the schema.
+- Full admin panel (user management, report review/action UI, feature
+  flags) — only Analytics exists; reports and campaigns still require
+  the Supabase SQL editor to act on.
+- Rate limiting, audit logs, and malware scanning on uploads — these
+  need either Supabase Edge Functions or a third-party service.
+- Adaptive video streaming / multiple resolutions — Supabase Storage
+  serves the original file as-is; a real transcoding pipeline is a
+  separate infrastructure project.
+- Deep multi-language coverage of every screen (the mechanism works;
+  most screens still need their strings tagged).
+
 ## What's next
 
 - AI captions/hashtags/translation via a secure Edge Function

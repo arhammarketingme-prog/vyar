@@ -1509,3 +1509,107 @@ alter table public.story_stickers add constraint story_stickers_type_check
 -- push-notification infrastructure yet, so "remind me" does not actually
 -- send a notification at the target time. Said plainly so it isn't
 -- mistaken for a working reminder.
+
+-- =====================================================================
+-- PART 17: Remaining core-spec items — restrict, comment likes,
+-- interests, suggested accounts support
+-- =====================================================================
+
+-- RESTRICT (lighter than block/mute — Instagram-style: their comments
+-- are hidden from everyone except themselves and you, without them
+-- knowing they've been restricted).
+create table if not exists public.restricts (
+  restrictor_id uuid not null references public.profiles(id) on delete cascade,
+  restricted_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (restrictor_id, restricted_id)
+);
+
+alter table public.restricts enable row level security;
+drop policy if exists "users manage their own restricts" on public.restricts;
+create policy "users manage their own restricts"
+  on public.restricts for all
+  using (auth.uid() = restrictor_id)
+  with check (auth.uid() = restrictor_id);
+
+-- A restricted user should not learn they're restricted, so the
+-- restrictor list itself is private — but restrict effects on comments
+-- are handled client-side (hide comment for others, show for the
+-- restricted commenter and post author) using this table.
+
+-- COMMENT LIKES ------------------------------------------------------------
+create table if not exists public.comment_likes (
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id)
+);
+
+alter table public.comment_likes enable row level security;
+
+drop policy if exists "comment likes visible respecting post visibility" on public.comment_likes;
+create policy "comment likes visible respecting post visibility"
+  on public.comment_likes for select
+  using (
+    exists (
+      select 1 from public.comments c join public.posts p on p.id = c.post_id
+      where c.id = comment_id and public.can_view_profile(p.author_id, auth.uid())
+    )
+  );
+
+drop policy if exists "users can like comments as themselves" on public.comment_likes;
+create policy "users can like comments as themselves"
+  on public.comment_likes for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "users can unlike their own comment like" on public.comment_likes;
+create policy "users can unlike their own comment like"
+  on public.comment_likes for delete
+  using (auth.uid() = user_id);
+
+create or replace function public.adjust_comment_like_counts()
+returns trigger language plpgsql as $$
+begin
+  if tg_op = 'INSERT' then
+    update public.comments set like_count = like_count + 1 where id = new.comment_id;
+  elsif tg_op = 'DELETE' then
+    update public.comments set like_count = greatest(like_count - 1, 0) where id = old.comment_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_comment_like_counts on public.comment_likes;
+create trigger trg_comment_like_counts
+  after insert or delete on public.comment_likes
+  for each row execute function public.adjust_comment_like_counts();
+
+-- INTERESTS (for feed personalization and profile display) -----------------
+alter table public.profiles add column if not exists interests text[] default '{}';
+
+-- =====================================================================
+-- PART 18: Restrict enforcement baked into comment visibility
+-- =====================================================================
+
+drop policy if exists "comments are viewable respecting post visibility" on public.comments;
+create policy "comments are viewable respecting post visibility"
+  on public.comments for select
+  using (
+    (
+      exists (
+        select 1 from public.posts p
+        where p.id = post_id and public.can_view_profile(p.author_id, auth.uid())
+      )
+      or public.is_current_user_admin()
+    )
+    and (
+      -- Not hidden by a restrict, UNLESS you are the comment's author or the post's author.
+      author_id = auth.uid()
+      or exists (select 1 from public.posts p where p.id = post_id and p.author_id = auth.uid())
+      or not exists (
+        select 1 from public.restricts r
+        join public.posts p on p.id = post_id
+        where r.restrictor_id = p.author_id and r.restricted_id = author_id
+      )
+    )
+  );

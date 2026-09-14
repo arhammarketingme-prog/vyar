@@ -1,4 +1,5 @@
 import { supabase, requireAuth, showError } from "./supabaseClient.js";
+import { getLang, setLang } from "./i18n.js";
 
 export async function initEditProfile() {
   const session = await requireAuth();
@@ -6,11 +7,13 @@ export async function initEditProfile() {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("display_name, bio, website, location, upi_id, is_private, account_type, business_category, business_hours, contact_phone, avatar_url")
+    .select("display_name, bio, website, location, upi_id, is_private, account_type, business_category, business_hours, contact_phone, avatar_url, preferred_language")
     .eq("id", session.user.id)
     .single();
 
   if (error || !profile) return;
+
+  document.getElementById("language-select").value = profile.preferred_language || getLang();
 
   const form = document.getElementById("edit-profile-form");
   const avatarInput = document.getElementById("avatar-input");
@@ -46,6 +49,7 @@ export async function initEditProfile() {
 
     let avatarUrl = profile.avatar_url;
     const avatarFile = avatarInput.files[0];
+    const selectedLang = document.getElementById("language-select").value;
     if (avatarFile) {
       const ext = avatarFile.name.split(".").pop();
       const path = `${session.user.id}/avatar.${ext}`;
@@ -73,6 +77,7 @@ export async function initEditProfile() {
         business_hours: form.business_hours.value.trim() || null,
         contact_phone: form.contact_phone.value.trim() || null,
         avatar_url: avatarUrl,
+        preferred_language: selectedLang,
       })
       .eq("id", session.user.id);
 
@@ -80,6 +85,7 @@ export async function initEditProfile() {
       showError(errEl, updateErr);
       return;
     }
+    setLang(selectedLang);
     window.location.href = "profile.html";
   });
 }

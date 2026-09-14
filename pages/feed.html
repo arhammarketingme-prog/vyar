@@ -19,15 +19,16 @@
       </a>
     </h1>
     <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
-      <a href="reels.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🎬 Reels</a>
-      <a href="collections.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📁 Collections</a>
-      <a href="communities.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">👥 Communities</a>
-      <a href="messages.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">💬 Messages</a>
+      <a href="reels.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🎬 <span data-i18n="reels">Reels</span></a>
+      <a href="collections.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📁 <span data-i18n="collections">Collections</span></a>
+      <a href="communities.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">👥 <span data-i18n="communities">Communities</span></a>
+      <a href="messages.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">💬 <span data-i18n="messages">Messages</span></a>
     </div>
     <div id="stories-bar" class="story-bar"></div>
     <div style="display:flex; gap:8px; margin-bottom:12px;">
-      <button id="tab-foryou" class="btn" style="width:auto; padding:6px 16px; font-size:13px;">For You</button>
-      <button id="tab-recommended" class="btn btn-secondary" style="width:auto; padding:6px 16px; font-size:13px;">Recommended</button>
+      <button id="tab-foryou" class="btn" style="width:auto; padding:6px 16px; font-size:13px;" data-i18n="for_you">For You</button>
+      <button id="tab-following" class="btn btn-secondary" style="width:auto; padding:6px 16px; font-size:13px;" data-i18n="following">Following</button>
+      <button id="tab-recommended" class="btn btn-secondary" style="width:auto; padding:6px 16px; font-size:13px;" data-i18n="recommended">Recommended</button>
     </div>
     <div id="feed"></div>
   </div>
@@ -38,8 +39,10 @@
     <a href="profile.html">👤</a>
   </nav>
   <script type="module">
-    import { initFeed, loadRecommended } from "../js/feed.js";
+    import { initFeed, loadRecommended, loadFollowing } from "../js/feed.js";
     import { initStoriesBar } from "../js/stories-bar.js";
+    import { translatePage } from "../js/i18n.js";
+    translatePage();
     initFeed();
     initStoriesBar();
 
@@ -58,18 +61,14 @@
       }
     });
 
-    document.getElementById("tab-foryou").addEventListener("click", (e) => {
-      e.target.classList.remove("btn-secondary");
-      document.getElementById("tab-recommended").classList.add("btn-secondary");
+    const tabs = ["tab-foryou", "tab-following", "tab-recommended"];
+    function activateTab(id) {
+      tabs.forEach((t) => document.getElementById(t).classList.toggle("btn-secondary", t !== id));
       document.getElementById("feed").innerHTML = "";
-      initFeed();
-    });
-    document.getElementById("tab-recommended").addEventListener("click", (e) => {
-      e.target.classList.remove("btn-secondary");
-      document.getElementById("tab-foryou").classList.add("btn-secondary");
-      document.getElementById("feed").innerHTML = "";
-      loadRecommended();
-    });
+    }
+    document.getElementById("tab-foryou").addEventListener("click", () => { activateTab("tab-foryou"); initFeed(); });
+    document.getElementById("tab-following").addEventListener("click", () => { activateTab("tab-following"); loadFollowing(); });
+    document.getElementById("tab-recommended").addEventListener("click", () => { activateTab("tab-recommended"); loadRecommended(); });
   </script>
 </body>
 </html>

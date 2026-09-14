@@ -15,6 +15,13 @@
     <h1 style="color:var(--vyra-accent); font-size:22px;">Edit profile</h1>
     <div class="card">
       <form id="edit-profile-form">
+        <label class="muted" style="display:block; margin-bottom:4px;">App language</label>
+        <select id="language-select">
+          <option value="en">English</option>
+          <option value="mr">मराठी (Marathi)</option>
+          <option value="hi">हिन्दी (Hindi)</option>
+        </select>
+
         <label class="muted" style="display:block; margin-bottom:4px;">Profile photo</label>
         <img id="avatar-preview" src="" style="width:80px; height:80px; border-radius:50%; object-fit:cover; display:none; margin-bottom:8px;">
         <input type="file" id="avatar-input" accept="image/*">

@@ -139,6 +139,36 @@ async function logAdClick(campaignId) {
   await supabase.from("ad_clicks").insert({ campaign_id: campaignId, viewer_id: session.user.id });
 }
 
+export async function loadFollowing() {
+  const { data: follows } = await supabase.from("follows").select("following_id").eq("follower_id", session.user.id).eq("status", "accepted");
+  const followingIds = (follows || []).map((f) => f.following_id);
+
+  const feedEl = document.getElementById("feed");
+  if (followingIds.length === 0) {
+    feedEl.innerHTML = `<p class="muted">You're not following anyone yet — posts from people you follow will show up here.</p>`;
+    return;
+  }
+
+  const { data: posts, error } = await supabase
+    .from("posts")
+    .select(`
+      id, caption, created_at, like_count, comment_count, post_type,
+      author:profiles!posts_author_id_fkey ( id, username, avatar_url, is_verified ),
+      post_media ( storage_path, position, media_type, alt_text ),
+      likes ( user_id ),
+      saves ( user_id )
+    `)
+    .in("author_id", followingIds)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  if (error || !posts || posts.length === 0) {
+    feedEl.innerHTML = `<p class="muted">No posts yet from people you follow.</p>`;
+    return;
+  }
+  posts.filter((p) => !mutedUserIds.has(p.author.id)).forEach((post) => renderPost(post));
+}
+
 export async function loadRecommended() {
   // A real, simple heuristic — NOT a machine-learning recommender.
   // Score = engagement (weighted) with a recency decay, computed here

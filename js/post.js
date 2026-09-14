@@ -158,9 +158,10 @@ async function renderCollectionPicker(postId) {
 }
 
 async function loadComments(postId) {
+  const { data: { session } } = await supabase.auth.getSession();
   const { data: comments, error } = await supabase
     .from("comments")
-    .select(`id, content, created_at, parent_comment_id, author:profiles!comments_author_id_fkey ( username, is_verified )`)
+    .select(`id, content, created_at, parent_comment_id, like_count, author:profiles!comments_author_id_fkey ( username, is_verified ), comment_likes ( user_id )`)
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
@@ -173,6 +174,11 @@ async function loadComments(postId) {
     repliesByParent.get(c.parent_comment_id).push(c);
   });
 
+  const likeRow = (c) => {
+    const liked = (c.comment_likes || []).some((l) => l.user_id === session.user.id);
+    return `<button data-comment-like="${c.id}" data-liked="${liked}" style="background:none; border:none; color:${liked ? "var(--vyra-accent)" : "var(--vyra-text-dim)"}; cursor:pointer; padding:0;">${liked ? "♥" : "♡"} ${c.like_count || 0}</button>`;
+  };
+
   const list = document.getElementById("comments-list");
   list.innerHTML = topLevel
     .map((c) => {
@@ -182,15 +188,15 @@ async function loadComments(postId) {
           (r) => `
           <div class="card" style="margin-left:24px; margin-top:4px;">
             <strong>${escapeHtml(r.author.username)}${verifiedBadge(r.author.is_verified)}</strong> ${linkifyCaption(r.content)}
-            <div class="muted" style="font-size:11px;">${timeAgo(r.created_at)}</div>
+            <div class="muted" style="font-size:11px; display:flex; gap:8px;">${timeAgo(r.created_at)} ${likeRow(r)}</div>
           </div>`
         )
         .join("");
       return `
         <div class="card">
           <strong>${escapeHtml(c.author.username)}${verifiedBadge(c.author.is_verified)}</strong> ${linkifyCaption(c.content)}
-          <div class="muted" style="font-size:11px;">
-            ${timeAgo(c.created_at)} · <button data-reply-to="${c.id}" data-reply-name="${escapeHtml(c.author.username)}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">Reply</button>
+          <div class="muted" style="font-size:11px; display:flex; gap:8px; align-items:center;">
+            ${timeAgo(c.created_at)} · <button data-reply-to="${c.id}" data-reply-name="${escapeHtml(c.author.username)}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">Reply</button> · ${likeRow(c)}
           </div>
         </div>
         ${repliesHtml}`;
@@ -203,6 +209,19 @@ async function loadComments(postId) {
       input.value = `@${btn.dataset.replyName} `;
       input.dataset.parentId = btn.dataset.replyTo;
       input.focus();
+    });
+  });
+
+  list.querySelectorAll("[data-comment-like]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const commentId = btn.dataset.commentLike;
+      const liked = btn.dataset.liked === "true";
+      if (liked) {
+        await supabase.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", session.user.id);
+      } else {
+        await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: session.user.id });
+      }
+      loadComments(postId);
     });
   });
 }

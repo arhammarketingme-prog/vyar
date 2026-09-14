@@ -116,9 +116,23 @@ async function renderFollowButton(profile, session) {
   modWrap.style.cssText = "display:flex; gap:8px; margin-top:8px;";
   modWrap.innerHTML = `
     <button class="btn btn-secondary" id="mute-btn" style="width:auto; padding:6px 12px; font-size:13px;">🔇 Mute</button>
+    <button class="btn btn-secondary" id="restrict-btn" style="width:auto; padding:6px 12px; font-size:13px;">🛡️ Restrict</button>
     <button class="btn btn-secondary" id="block-btn" style="width:auto; padding:6px 12px; font-size:13px;">🚫 Block</button>
   `;
   slot.appendChild(modWrap);
+
+  const { data: existingRestrict } = await supabase.from("restricts").select("*").eq("restrictor_id", session.user.id).eq("restricted_id", profile.id).maybeSingle();
+  const restrictBtn = document.getElementById("restrict-btn");
+  if (existingRestrict) restrictBtn.textContent = "🛡️ Restricted ✓";
+  restrictBtn.addEventListener("click", async () => {
+    if (restrictBtn.textContent.includes("✓")) {
+      await supabase.from("restricts").delete().eq("restrictor_id", session.user.id).eq("restricted_id", profile.id);
+      restrictBtn.textContent = "🛡️ Restrict";
+    } else {
+      await supabase.from("restricts").insert({ restrictor_id: session.user.id, restricted_id: profile.id });
+      restrictBtn.textContent = "🛡️ Restricted ✓";
+    }
+  });
 
   const { data: existingMute } = await supabase.from("mutes").select("*").eq("muter_id", session.user.id).eq("muted_id", profile.id).maybeSingle();
   const muteBtn = document.getElementById("mute-btn");

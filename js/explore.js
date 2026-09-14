@@ -1,10 +1,66 @@
-import { supabase, requireAuth } from "./supabaseClient.js";
+import { supabase, requireAuth, phAvatar } from "./supabaseClient.js";
 
 export async function initExplore() {
   const session = await requireAuth();
   if (!session) return;
   await loadTrendingHashtags();
+  await loadSuggestedAccounts(session);
+  await loadPopularReels();
   await loadExploreGrid();
+}
+
+async function loadSuggestedAccounts(session) {
+  const { data: myFollows } = await supabase.from("follows").select("following_id").eq("follower_id", session.user.id);
+  const excludeIds = new Set([session.user.id, ...(myFollows || []).map((f) => f.following_id)]);
+
+  const { data: candidates } = await supabase
+    .from("profiles")
+    .select("id, username, avatar_url, followers_count")
+    .order("followers_count", { ascending: false })
+    .limit(30);
+
+  const suggestions = (candidates || []).filter((p) => !excludeIds.has(p.id)).slice(0, 8);
+  const wrap = document.getElementById("suggested-accounts");
+  if (suggestions.length === 0) {
+    wrap.innerHTML = `<p class="muted">No suggestions right now.</p>`;
+    return;
+  }
+  wrap.innerHTML = suggestions
+    .map(
+      (p) => `
+      <a href="profile.html?u=${encodeURIComponent(p.username)}" style="text-align:center; flex-shrink:0; width:80px;">
+        <img width="56" height="56" src="${p.avatar_url || phAvatar(56)}" style="width:56px; height:56px; border-radius:50%; object-fit:cover;">
+        <div style="font-size:12px; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.username)}</div>
+      </a>`
+    )
+    .join("");
+}
+
+async function loadPopularReels() {
+  const { data: reels } = await supabase
+    .from("posts")
+    .select("id, like_count, post_media(storage_path, position)")
+    .eq("post_type", "reel")
+    .order("like_count", { ascending: false })
+    .limit(9);
+
+  const wrap = document.getElementById("popular-reels");
+  if (!reels || reels.length === 0) {
+    wrap.innerHTML = `<p class="muted">No reels yet.</p>`;
+    return;
+  }
+  wrap.innerHTML = "";
+  reels.forEach((reel) => {
+    const media = (reel.post_media || [])[0];
+    if (!media) return;
+    const url = supabase.storage.from("post-media").getPublicUrl(media.storage_path).data.publicUrl;
+    const el = document.createElement("video");
+    el.src = url;
+    el.muted = true;
+    el.style.cssText = "width:100%; aspect-ratio:9/16; object-fit:cover; border-radius:8px; cursor:pointer;";
+    el.addEventListener("click", () => (window.location.href = `post.html?id=${reel.id}`));
+    wrap.appendChild(el);
+  });
 }
 
 async function loadTrendingHashtags() {
