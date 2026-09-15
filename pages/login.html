@@ -21,13 +21,23 @@
         <div id="login-error" class="error hidden"></div>
         <button type="submit" class="btn">Log in</button>
       </form>
+      <div style="text-align:center; margin:12px 0; color:var(--vyra-text-dim); font-size:13px;">or</div>
+      <button id="google-login-btn" class="btn btn-secondary" style="margin-bottom:8px;">Continue with Google</button>
+      <button id="facebook-login-btn" class="btn btn-secondary">Continue with Facebook</button>
     </div>
     <p class="muted">New here? <a href="signup.html" style="color:var(--vyra-accent);">Create an account</a></p>
     <p class="muted"><a href="forgot-password.html" style="color:var(--vyra-accent);">Forgot password?</a></p>
   </div>
   <script type="module">
-    import { bindLoginForm } from "../js/auth.js";
+    import { bindLoginForm, signInWithGoogle, signInWithFacebook } from "../js/auth.js";
     bindLoginForm(document.getElementById("login-form"), document.getElementById("login-error"));
+
+    document.getElementById("google-login-btn").addEventListener("click", async () => {
+      try { await signInWithGoogle(); } catch (err) { alert(err.message); }
+    });
+    document.getElementById("facebook-login-btn").addEventListener("click", async () => {
+      try { await signInWithFacebook(); } catch (err) { alert(err.message); }
+    });
   </script>
 </body>
 </html>

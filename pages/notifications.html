@@ -12,7 +12,7 @@
 </head>
 <body>
   <div class="container">
-    <h1 style="color:var(--vyra-accent); font-size:22px;">Notifications</h1>
+    <h1 style="color:var(--vyra-accent); font-size:22px;" data-i18n="notifications">Notifications</h1>
     <a href="follow-requests.html" class="btn btn-secondary" style="display:block; margin-bottom:12px;">Follow Requests</a>
     <div id="notifications-list"></div>
   </div>
@@ -23,6 +23,7 @@
     <a href="profile.html">👤</a>
   </nav>
   <script type="module">
+    import { translatePage } from "../js/i18n.js"; translatePage();
     import { initNotifications } from "../js/notifications.js";
     initNotifications();
   </script>

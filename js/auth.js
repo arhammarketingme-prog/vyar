@@ -46,6 +46,27 @@ export async function signOutEverywhere() {
   window.location.href = "login.html";
 }
 
+// ---- Social login (Google / Facebook via Supabase OAuth) ----
+// Requires the provider to be enabled in Supabase → Authentication →
+// Providers, with a Client ID/Secret from that provider's own developer
+// console. Until that's configured, clicking these buttons will show
+// an error from Supabase — that's expected, not a bug in this code.
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: new URL("feed.html", window.location.href).toString() },
+  });
+  if (error) throw error;
+}
+
+export async function signInWithFacebook() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "facebook",
+    options: { redirectTo: new URL("feed.html", window.location.href).toString() },
+  });
+  if (error) throw error;
+}
+
 // ---- Wire up a login form ----
 export function bindLoginForm(formEl, errEl) {
   formEl.addEventListener("submit", async (e) => {

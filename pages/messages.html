@@ -12,7 +12,7 @@
 </head>
 <body>
   <div class="container">
-    <h1 style="color:var(--vyra-accent); font-size:22px;">Messages</h1>
+    <h1 style="color:var(--vyra-accent); font-size:22px;" data-i18n="messages">Messages</h1>
     <div id="inbox-list"></div>
   </div>
   <nav class="bottom-nav">
@@ -22,6 +22,7 @@
     <a href="profile.html">👤</a>
   </nav>
   <script type="module">
+    import { translatePage } from "../js/i18n.js"; translatePage();
     import { initMessagesInbox } from "../js/messages-inbox.js";
     initMessagesInbox();
   </script>

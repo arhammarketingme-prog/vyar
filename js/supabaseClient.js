@@ -15,6 +15,15 @@ export async function requireAuth() {
     window.location.href = "login.html";
     return null;
   }
+
+  const { data: profile } = await supabase.from("profiles").select("is_suspended").eq("id", session.user.id).single();
+  if (profile?.is_suspended) {
+    await supabase.auth.signOut({ scope: "local" });
+    alert("Your account has been suspended. Contact support if you believe this is a mistake.");
+    window.location.href = "login.html";
+    return null;
+  }
+
   return session;
 }
 

@@ -25,6 +25,21 @@ export async function initAdminModeration() {
     msgEl.textContent = updateErr ? updateErr.message : `@${username} is now ${!profile.is_verified ? "verified ✓" : "unverified"}.`;
     e.target.reset();
   });
+
+  document.getElementById("suspend-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = e.target.username.value.trim();
+    const msgEl = document.getElementById("suspend-msg");
+    const { data: profile, error } = await supabase.from("profiles").select("id, is_suspended").eq("username", username).single();
+    if (error || !profile) {
+      msgEl.textContent = "User not found.";
+      return;
+    }
+    if (!profile.is_suspended && !confirm(`Suspend @${username}? Their content becomes invisible to everyone until unsuspended.`)) return;
+    const { error: updateErr } = await supabase.from("profiles").update({ is_suspended: !profile.is_suspended }).eq("id", profile.id);
+    msgEl.textContent = updateErr ? updateErr.message : `@${username} is now ${!profile.is_suspended ? "SUSPENDED" : "active again"}.`;
+    e.target.reset();
+  });
 }
 
 async function loadReports() {

@@ -12,7 +12,7 @@
 </head>
 <body>
   <div class="container">
-    <h1 style="color:var(--vyra-accent); font-size:22px;">Communities</h1>
+    <h1 style="color:var(--vyra-accent); font-size:22px;" data-i18n="communities">Communities</h1>
     <div id="communities-list"></div>
 
     <h3>Start a community</h3>
@@ -37,6 +37,7 @@
     <a href="profile.html">👤</a>
   </nav>
   <script type="module">
+    import { translatePage } from "../js/i18n.js"; translatePage();
     import { initCommunities } from "../js/communities.js";
     initCommunities();
   </script>

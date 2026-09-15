@@ -1,5 +1,6 @@
 import { supabase, requireAuth, showError, phAvatar, verifiedBadge } from "./supabaseClient.js";
 import { initHighlightsBar } from "./highlights.js";
+import { t, translatePage } from "./i18n.js";
 
 export async function initProfile() {
   const session = await requireAuth();
@@ -27,7 +28,7 @@ export async function initProfile() {
     msgLink.href = `chat.html?u=${profile.id}`;
     msgLink.className = "btn btn-secondary";
     msgLink.style.cssText = "display:inline-block; width:auto; padding:6px 14px; margin-top:8px;";
-    msgLink.textContent = "💬 Message";
+    msgLink.textContent = `💬 ${t("message_btn")}`;
     slot.appendChild(msgLink);
   }
   await renderPostsGrid(profile.id);
@@ -50,15 +51,15 @@ function renderProfile(profile, isOwnProfile, session) {
         </div>
       ` : ""}
       <div style="display:flex; justify-content:center; gap:24px; margin:12px 0;">
-        <div><strong>${profile.posts_count}</strong><div class="muted">Posts</div></div>
-        <div><strong>${profile.followers_count}</strong><div class="muted">Followers</div></div>
-        <div><strong>${profile.following_count}</strong><div class="muted">Following</div></div>
+        <div><strong>${profile.posts_count}</strong><div class="muted">${t("posts")}</div></div>
+        <div><strong>${profile.followers_count}</strong><div class="muted">${t("followers")}</div></div>
+        <div><strong>${profile.following_count}</strong><div class="muted">${t("following_count")}</div></div>
       </div>
       <div id="follow-slot"></div>
       ${isOwnProfile ? `
         <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-          <a href="edit-profile.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">✏️ Edit profile</a>
-          <a href="saved.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🔖 Saved</a>
+          <a href="edit-profile.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">✏️ ${t("edit_profile")}</a>
+          <a href="saved.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🔖 ${t("saved")}</a>
           <a href="collections.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📁 Collections</a>
           <a href="creator-studio.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📊 Creator Studio</a>
           <a href="ads-dashboard.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📢 Ads</a>
@@ -67,7 +68,7 @@ function renderProfile(profile, isOwnProfile, session) {
           <a href="security.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🔒 Security</a>
         </div>
       ` : ""}
-      ${isOwnProfile ? `<button class="btn btn-secondary" id="logout-btn">Log out</button>` : ""}
+      ${isOwnProfile ? `<button class="btn btn-secondary" id="logout-btn">${t("log_out")}</button>` : ""}
     </div>
     <div id="highlights-bar" class="story-bar"></div>
     <div id="posts-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;"></div>
@@ -93,14 +94,15 @@ async function renderFollowButton(profile, session) {
   const btn = document.createElement("button");
   btn.className = "btn";
   const setLabel = (state) => {
-    if (state === "accepted") btn.textContent = "Following";
+    btn.dataset.state = state || "none";
+    if (state === "accepted") btn.textContent = t("unfollow");
     else if (state === "pending") btn.textContent = "Requested";
-    else btn.textContent = "Follow";
+    else btn.textContent = t("follow");
   };
   setLabel(existing?.status);
 
   btn.addEventListener("click", async () => {
-    if (btn.textContent === "Follow") {
+    if (btn.dataset.state === "none") {
       const status = profile.is_private ? "pending" : "accepted";
       await supabase.from("follows").insert({ follower_id: session.user.id, following_id: profile.id, status });
       setLabel(status);

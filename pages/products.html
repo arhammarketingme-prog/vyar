@@ -12,7 +12,7 @@
 </head>
 <body>
   <div class="container">
-    <h1 style="color:var(--vyra-accent); font-size:22px;">Products</h1>
+    <h1 style="color:var(--vyra-accent); font-size:22px;" data-i18n="products">Products</h1>
     <p class="muted">Buying happens on the external link you provide (your own store, WhatsApp, Instagram shop, etc) — VYRA doesn't process payments.</p>
     <div id="products-list"></div>
 
@@ -36,6 +36,7 @@
     <a href="profile.html">👤</a>
   </nav>
   <script type="module">
+    import { translatePage } from "../js/i18n.js"; translatePage();
     import { initProducts } from "../js/products.js";
     initProducts();
   </script>

@@ -1629,3 +1629,40 @@ drop policy if exists "users can update their own profile" on public.profiles;
 create policy "users can update their own profile"
   on public.profiles for update
   using (auth.uid() = id or public.is_current_user_admin());
+
+-- =====================================================================
+-- PART 21: Account suspension (admin moderation action)
+-- =====================================================================
+
+alter table public.profiles add column if not exists is_suspended boolean not null default false;
+
+-- Suspended accounts' content becomes invisible to everyone except the
+-- admin who needs to review it (or themselves, so they can see their
+-- own suspended state and know why they were signed out).
+create or replace function public.can_view_profile(owner uuid, viewer uuid)
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select
+    (
+      owner = viewer
+      or (
+        not exists (select 1 from public.profiles p where p.id = owner and p.is_suspended)
+        and (
+          not exists (select 1 from public.profiles p where p.id = owner and p.is_private)
+          or exists (
+            select 1 from public.follows f
+            where f.follower_id = viewer and f.following_id = owner and f.status = 'accepted'
+          )
+        )
+      )
+      or public.is_current_user_admin()
+    )
+    and not exists (
+      select 1 from public.blocks b
+      where (b.blocker_id = owner and b.blocked_id = viewer)
+         or (b.blocker_id = viewer and b.blocked_id = owner)
+    );
+$$;

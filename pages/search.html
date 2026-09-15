@@ -12,7 +12,7 @@
 </head>
 <body>
   <div class="container">
-    <input type="text" id="search-input" placeholder="Search users or #hashtags" autofocus>
+    <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Search users or #hashtags" autofocus>
 
     <h3>Users</h3>
     <div id="search-users"></div>
@@ -30,6 +30,7 @@
     <a href="profile.html">👤</a>
   </nav>
   <script type="module">
+    import { translatePage } from "../js/i18n.js"; translatePage();
     import { initSearch } from "../js/search.js";
     initSearch();
   </script>

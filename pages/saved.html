@@ -12,7 +12,7 @@
 </head>
 <body>
   <div class="container">
-    <h1 style="color:var(--vyra-accent); font-size:22px;">Saved</h1>
+    <h1 style="color:var(--vyra-accent); font-size:22px;" data-i18n="saved">Saved</h1>
     <div id="saved-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;"></div>
   </div>
   <nav class="bottom-nav">
@@ -22,6 +22,7 @@
     <a href="profile.html">👤</a>
   </nav>
   <script type="module">
+    import { translatePage } from "../js/i18n.js"; translatePage();
     import { initSaved } from "../js/saved.js";
     initSaved();
   </script>

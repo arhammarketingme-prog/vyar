@@ -319,17 +319,43 @@ already has):**
   revoke the verified ✓ badge by username — both used to require the
   Supabase SQL editor, now have a real UI.
 
-**Still missing** (updated list):
-- Social login (Google/Facebook) — needs you to create OAuth apps in
-  their developer consoles and add the credentials in Supabase Auth
-  settings; I can walk through that whenever you're ready.
-- Comment pinning/sorting, community events, moderator action tools
-  beyond the report/verify flow above.
-- Full user management in the admin panel (suspend/ban a user) — the
-  report review exists, but there's no "disable this account" action yet.
-- Rate limiting, audit logs, and malware scanning on uploads.
-- Adaptive video streaming / multiple resolutions.
-- Deep multi-language coverage of every remaining screen.
+**Third catch-up batch — all three requested, in order:**
+- **Account suspend** (Admin Moderation page): toggles `is_suspended`;
+  a suspended account's posts/profile become invisible to everyone
+  (enforced in the database, same pattern as blocks), and if that person
+  is already logged in, their very next page load signs them out with a
+  clear message — no separate "ban" mechanism needed on top of this.
+- **Wider multi-language coverage**: the i18n mechanism from before now
+  covers headers and buttons on Explore, Communities, Messages,
+  Notifications, Collections, Saved, Creator Studio, Products, Search
+  (placeholder text), and the Profile page's stats/buttons (Edit
+  profile, Saved, Follow/Following, Message, Log out, Posts/Followers/
+  Following counts). Still not covered: dynamic per-item text
+  (captions, individual post actions, form field labels on pages not
+  listed above) — same `data-i18n` pattern extends there too, just not
+  done yet everywhere.
+- **Google / Facebook login**: the buttons and code are live on the
+  login page (`signInWithOAuth`) — but **this needs one-time setup you
+  have to do yourself**, since it requires creating an app in each
+  provider's own developer console:
+  1. Google: console.cloud.google.com → create an OAuth 2.0 Client ID
+     (type: Web application).
+  2. Facebook: developers.facebook.com → create an app → add "Facebook
+     Login" product.
+  3. For both: the redirect URI they need is shown in Supabase →
+     Authentication → Providers → (Google/Facebook) → it looks like
+     `https://YOUR_PROJECT.supabase.co/auth/v1/callback`.
+  4. Paste the Client ID/Secret from each provider into that same
+     Supabase Providers screen and toggle it on.
+  Until that's done, tapping the buttons shows an error from Supabase —
+  expected, not a bug in this code. Happy to walk through the console
+  steps together whenever you're ready to do it.
+
+**Still genuinely missing** (small remaining list): comment
+pinning/sorting, community events, rate limiting, audit logs, malware
+scanning on uploads, and adaptive video streaming — each needs either a
+paid third-party service or meaningfully more infrastructure than this
+Supabase+static-site setup provides.
 
 ## What's next
 

@@ -12,7 +12,7 @@
 </head>
 <body>
   <div class="container">
-    <h1 style="color:var(--vyra-accent); font-size:22px;">Creator Studio</h1>
+    <h1 style="color:var(--vyra-accent); font-size:22px;" data-i18n="creator_studio">Creator Studio</h1>
 
     <h3>Overview</h3>
     <div id="overview-grid" class="stat-grid"><p class="muted">Loading...</p></div>
@@ -32,6 +32,7 @@
     <a href="profile.html">👤</a>
   </nav>
   <script type="module">
+    import { translatePage } from "../js/i18n.js"; translatePage();
     import { initCreatorStudio } from "../js/creator-studio.js";
     initCreatorStudio();
   </script>
