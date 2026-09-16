@@ -1666,3 +1666,126 @@ as $$
          or (b.blocker_id = viewer and b.blocked_id = owner)
     );
 $$;
+
+-- =====================================================================
+-- PART 22: Comment pinning/sorting (UI only — schema already had
+-- is_pinned since Phase 1), Community Events, Rate Limiting, Audit Log
+-- =====================================================================
+
+-- COMMUNITY EVENTS ----------------------------------------------------
+create table if not exists public.community_events (
+  id uuid primary key default uuid_generate_v4(),
+  community_id uuid not null references public.communities(id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 100),
+  description text,
+  event_time timestamptz not null,
+  location text,
+  created_by uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.event_attendees (
+  event_id uuid not null references public.community_events(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'going' check (status in ('going', 'interested')),
+  created_at timestamptz not null default now(),
+  primary key (event_id, user_id)
+);
+
+alter table public.community_events enable row level security;
+alter table public.event_attendees enable row level security;
+
+drop policy if exists "events visible to anyone who can see the community" on public.community_events;
+create policy "events visible to anyone who can see the community"
+  on public.community_events for select
+  using (exists (select 1 from public.communities c where c.id = community_id and (c.visibility <> 'private' or exists (select 1 from public.community_members m where m.community_id = c.id and m.user_id = auth.uid()))));
+
+drop policy if exists "members can create events in their community" on public.community_events;
+create policy "members can create events in their community"
+  on public.community_events for insert
+  with check (exists (select 1 from public.community_members m where m.community_id = community_id and m.user_id = auth.uid()) and created_by = auth.uid());
+
+drop policy if exists "creator or community owner can delete an event" on public.community_events;
+create policy "creator or community owner can delete an event"
+  on public.community_events for delete
+  using (created_by = auth.uid() or exists (select 1 from public.community_members m where m.community_id = community_id and m.user_id = auth.uid() and m.role in ('owner', 'moderator')));
+
+drop policy if exists "attendee list visible if the event is visible" on public.event_attendees;
+create policy "attendee list visible if the event is visible"
+  on public.event_attendees for select
+  using (exists (select 1 from public.community_events e where e.id = event_id));
+
+drop policy if exists "users RSVP as themselves" on public.event_attendees;
+create policy "users RSVP as themselves"
+  on public.event_attendees for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- RATE LIMITING (built with plain RLS — no external service) -------------
+-- Follows: max 50 new follows per rolling hour (spam-follow protection).
+drop policy if exists "users can follow as themselves" on public.follows;
+create policy "users can follow as themselves"
+  on public.follows for insert
+  with check (
+    auth.uid() = follower_id
+    and (select count(*) from public.follows f where f.follower_id = auth.uid() and f.created_at > now() - interval '1 hour') < 50
+  );
+
+-- Comments: max 20 per rolling minute (anti-spam / anti-flood).
+drop policy if exists "users can comment as themselves" on public.comments;
+create policy "users can comment as themselves"
+  on public.comments for insert
+  with check (
+    auth.uid() = author_id
+    and (select count(*) from public.comments c where c.author_id = auth.uid() and c.created_at > now() - interval '1 minute') < 20
+  );
+
+-- Direct messages: max 30 per rolling minute (prevents mass-DM spam).
+drop policy if exists "users can send messages as themselves" on public.direct_messages;
+create policy "users can send messages as themselves"
+  on public.direct_messages for insert
+  with check (
+    auth.uid() = sender_id
+    and (select count(*) from public.direct_messages d where d.sender_id = auth.uid() and d.created_at > now() - interval '1 minute') < 30
+  );
+
+-- Reports: max 20 per rolling hour (prevents report-flooding abuse).
+drop policy if exists "users can file their own reports" on public.reports;
+create policy "users can file their own reports"
+  on public.reports for insert
+  with check (
+    auth.uid() = reporter_id
+    and (select count(*) from public.reports r where r.reporter_id = auth.uid() and r.created_at > now() - interval '1 hour') < 20
+  );
+
+-- ADMIN AUDIT LOG -----------------------------------------------------------
+create table if not exists public.admin_audit_log (
+  id uuid primary key default uuid_generate_v4(),
+  admin_id uuid not null references public.profiles(id) on delete cascade,
+  action text not null,
+  target_type text not null,
+  target_id text,
+  details jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.admin_audit_log enable row level security;
+
+drop policy if exists "only admins can read the audit log" on public.admin_audit_log;
+create policy "only admins can read the audit log"
+  on public.admin_audit_log for select
+  using (public.is_current_user_admin());
+
+drop policy if exists "only admins can write to the audit log" on public.admin_audit_log;
+create policy "only admins can write to the audit log"
+  on public.admin_audit_log for insert
+  with check (public.is_current_user_admin() and auth.uid() = admin_id);
+
+-- =====================================================================
+-- PART 23: Post author can pin/unpin comments on their own posts
+-- =====================================================================
+
+drop policy if exists "post author can pin comments on their post" on public.comments;
+create policy "post author can pin comments on their post"
+  on public.comments for update
+  using (exists (select 1 from public.posts p where p.id = post_id and p.author_id = auth.uid()));

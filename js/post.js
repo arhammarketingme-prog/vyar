@@ -1,5 +1,8 @@
 import { supabase, requireAuth, showError, phAvatar, timeAgo, verifiedBadge } from "./supabaseClient.js";
 
+let postAuthorId = null;
+let currentSort = "newest";
+
 export async function initPostDetail() {
   const session = await requireAuth();
   if (!session) return;
@@ -23,10 +26,21 @@ export async function initPostDetail() {
     return;
   }
 
+  postAuthorId = post.author.id;
   renderPost(post, session);
   renderTaggedProduct(post);
+  bindSortControl(postId);
   await loadComments(postId);
   bindCommentForm(postId, session);
+}
+
+function bindSortControl(postId) {
+  const sel = document.getElementById("comment-sort");
+  if (!sel) return;
+  sel.addEventListener("change", () => {
+    currentSort = sel.value;
+    loadComments(postId);
+  });
 }
 
 function renderTaggedProduct(post) {
@@ -161,13 +175,21 @@ async function loadComments(postId) {
   const { data: { session } } = await supabase.auth.getSession();
   const { data: comments, error } = await supabase
     .from("comments")
-    .select(`id, content, created_at, parent_comment_id, like_count, author:profiles!comments_author_id_fkey ( username, is_verified ), comment_likes ( user_id )`)
+    .select(`id, content, created_at, parent_comment_id, like_count, is_pinned, author:profiles!comments_author_id_fkey ( username, is_verified ), comment_likes ( user_id )`)
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
   if (error || !comments) return;
 
-  const topLevel = comments.filter((c) => !c.parent_comment_id);
+  const isPostOwner = session.user.id === postAuthorId;
+  let topLevel = comments.filter((c) => !c.parent_comment_id);
+
+  if (currentSort === "oldest") topLevel.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  else if (currentSort === "newest") topLevel.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  else if (currentSort === "top") topLevel.sort((a, b) => b.like_count - a.like_count);
+  // Pinned comments always float to the top, regardless of sort.
+  topLevel.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0));
+
   const repliesByParent = new Map();
   comments.filter((c) => c.parent_comment_id).forEach((c) => {
     if (!repliesByParent.has(c.parent_comment_id)) repliesByParent.set(c.parent_comment_id, []);
@@ -178,6 +200,11 @@ async function loadComments(postId) {
     const liked = (c.comment_likes || []).some((l) => l.user_id === session.user.id);
     return `<button data-comment-like="${c.id}" data-liked="${liked}" style="background:none; border:none; color:${liked ? "var(--vyra-accent)" : "var(--vyra-text-dim)"}; cursor:pointer; padding:0;">${liked ? "♥" : "♡"} ${c.like_count || 0}</button>`;
   };
+
+  const pinRow = (c) =>
+    isPostOwner
+      ? ` · <button data-pin-toggle="${c.id}" data-pinned="${c.is_pinned}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">${c.is_pinned ? "Unpin" : "Pin"}</button>`
+      : "";
 
   const list = document.getElementById("comments-list");
   list.innerHTML = topLevel
@@ -193,10 +220,11 @@ async function loadComments(postId) {
         )
         .join("");
       return `
-        <div class="card">
+        <div class="card" style="${c.is_pinned ? "border-color:var(--vyra-accent);" : ""}">
+          ${c.is_pinned ? `<div class="muted" style="font-size:11px; margin-bottom:4px;">📌 Pinned</div>` : ""}
           <strong>${escapeHtml(c.author.username)}${verifiedBadge(c.author.is_verified)}</strong> ${linkifyCaption(c.content)}
           <div class="muted" style="font-size:11px; display:flex; gap:8px; align-items:center;">
-            ${timeAgo(c.created_at)} · <button data-reply-to="${c.id}" data-reply-name="${escapeHtml(c.author.username)}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">Reply</button> · ${likeRow(c)}
+            ${timeAgo(c.created_at)} · <button data-reply-to="${c.id}" data-reply-name="${escapeHtml(c.author.username)}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">Reply</button> · ${likeRow(c)}${pinRow(c)}
           </div>
         </div>
         ${repliesHtml}`;
@@ -221,6 +249,14 @@ async function loadComments(postId) {
       } else {
         await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: session.user.id });
       }
+      loadComments(postId);
+    });
+  });
+
+  list.querySelectorAll("[data-pin-toggle]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const isPinned = btn.dataset.pinned === "true";
+      await supabase.from("comments").update({ is_pinned: !isPinned }).eq("id", btn.dataset.pinToggle);
       loadComments(postId);
     });
   });

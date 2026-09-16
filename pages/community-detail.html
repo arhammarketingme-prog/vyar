@@ -13,6 +13,20 @@
 <body>
   <div class="container">
     <div id="community-root">Loading...</div>
+
+    <h3>Events</h3>
+    <div id="events-list"></div>
+    <div class="card">
+      <form id="new-event-form">
+        <input type="text" name="title" placeholder="Event title" required>
+        <textarea name="description" placeholder="Description" rows="2"></textarea>
+        <input type="datetime-local" name="event_time" required>
+        <input type="text" name="location" placeholder="Location (optional)">
+        <button type="submit" class="btn">Create event</button>
+      </form>
+    </div>
+
+    <h3>Posts</h3>
     <div id="community-feed"></div>
   </div>
   <nav class="bottom-nav">

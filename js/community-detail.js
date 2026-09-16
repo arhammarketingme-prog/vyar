@@ -24,6 +24,9 @@ export async function initCommunityDetail() {
     <p>${escapeHtml(community.description || "")}</p>
   `;
 
+  await loadEvents(communityId, session);
+  bindNewEventForm(communityId, session);
+
   const { data: posts } = await supabase
     .from("posts")
     .select(`
@@ -63,4 +66,71 @@ function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
+}
+
+async function loadEvents(communityId, session) {
+  const { data: events } = await supabase
+    .from("community_events")
+    .select("id, title, description, event_time, location, event_attendees(user_id, status)")
+    .eq("community_id", communityId)
+    .order("event_time", { ascending: true });
+
+  const list = document.getElementById("events-list");
+  if (!events || events.length === 0) {
+    list.innerHTML = `<p class="muted">No events yet.</p>`;
+    return;
+  }
+
+  list.innerHTML = events
+    .map((ev) => {
+      const goingCount = (ev.event_attendees || []).filter((a) => a.status === "going").length;
+      const myStatus = (ev.event_attendees || []).find((a) => a.user_id === session.user.id)?.status;
+      return `
+        <div class="card">
+          <strong>${escapeHtml(ev.title)}</strong>
+          <div class="muted">${new Date(ev.event_time).toLocaleString()} ${ev.location ? "· " + escapeHtml(ev.location) : ""}</div>
+          <p>${escapeHtml(ev.description || "")}</p>
+          <div class="muted">${goingCount} going</div>
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <button data-rsvp="${ev.id}" data-status="going" class="btn ${myStatus === "going" ? "" : "btn-secondary"}" style="width:auto; padding:6px 12px; font-size:13px;">Going</button>
+            <button data-rsvp="${ev.id}" data-status="interested" class="btn ${myStatus === "interested" ? "" : "btn-secondary"}" style="width:auto; padding:6px 12px; font-size:13px;">Interested</button>
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  list.querySelectorAll("[data-rsvp]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await supabase.from("event_attendees").upsert(
+        { event_id: btn.dataset.rsvp, user_id: session.user.id, status: btn.dataset.status },
+        { onConflict: "event_id,user_id" }
+      );
+      loadEvents(communityId, session);
+    });
+  });
+}
+
+function bindNewEventForm(communityId, session) {
+  const form = document.getElementById("new-event-form");
+  if (!form) return;
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = form.title.value.trim();
+    const eventTime = form.event_time.value;
+    if (!title || !eventTime) return;
+    const { error } = await supabase.from("community_events").insert({
+      community_id: communityId,
+      title,
+      description: form.description.value.trim() || null,
+      event_time: new Date(eventTime).toISOString(),
+      location: form.location.value.trim() || null,
+      created_by: session.user.id,
+    });
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    form.reset();
+    loadEvents(communityId, session);
+  });
 }

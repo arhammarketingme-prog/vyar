@@ -1,5 +1,17 @@
 import { supabase, requireAuth } from "./supabaseClient.js";
 
+let adminId = null;
+
+async function logAction(action, targetType, targetId, details) {
+  await supabase.from("admin_audit_log").insert({
+    admin_id: adminId,
+    action,
+    target_type: targetType,
+    target_id: String(targetId),
+    details: details || null,
+  });
+}
+
 export async function initAdminModeration() {
   const session = await requireAuth();
   if (!session) return;
@@ -9,6 +21,7 @@ export async function initAdminModeration() {
     document.getElementById("admin-root").innerHTML = `<p class="muted">You don't have admin access.</p>`;
     return;
   }
+  adminId = session.user.id;
 
   await loadReports();
 
@@ -23,6 +36,7 @@ export async function initAdminModeration() {
     }
     const { error: updateErr } = await supabase.from("profiles").update({ is_verified: !profile.is_verified }).eq("id", profile.id);
     msgEl.textContent = updateErr ? updateErr.message : `@${username} is now ${!profile.is_verified ? "verified ✓" : "unverified"}.`;
+    if (!updateErr) await logAction(!profile.is_verified ? "verify_user" : "unverify_user", "user", profile.id, { username });
     e.target.reset();
   });
 
@@ -38,6 +52,7 @@ export async function initAdminModeration() {
     if (!profile.is_suspended && !confirm(`Suspend @${username}? Their content becomes invisible to everyone until unsuspended.`)) return;
     const { error: updateErr } = await supabase.from("profiles").update({ is_suspended: !profile.is_suspended }).eq("id", profile.id);
     msgEl.textContent = updateErr ? updateErr.message : `@${username} is now ${!profile.is_suspended ? "SUSPENDED" : "active again"}.`;
+    if (!updateErr) await logAction(!profile.is_suspended ? "suspend_user" : "unsuspend_user", "user", profile.id, { username });
     e.target.reset();
   });
 }
@@ -73,12 +88,14 @@ async function loadReports() {
   list.querySelectorAll("[data-review]").forEach((btn) =>
     btn.addEventListener("click", async () => {
       await supabase.from("reports").update({ status: "reviewed" }).eq("id", btn.dataset.review);
+      await logAction("review_report", "report", btn.dataset.review);
       loadReports();
     })
   );
   list.querySelectorAll("[data-dismiss]").forEach((btn) =>
     btn.addEventListener("click", async () => {
       await supabase.from("reports").update({ status: "dismissed" }).eq("id", btn.dataset.dismiss);
+      await logAction("dismiss_report", "report", btn.dataset.dismiss);
       loadReports();
     })
   );

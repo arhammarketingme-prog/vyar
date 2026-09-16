@@ -351,11 +351,28 @@ already has):**
   expected, not a bug in this code. Happy to walk through the console
   steps together whenever you're ready to do it.
 
-**Still genuinely missing** (small remaining list): comment
-pinning/sorting, community events, rate limiting, audit logs, malware
-scanning on uploads, and adaptive video streaming — each needs either a
-paid third-party service or meaningfully more infrastructure than this
-Supabase+static-site setup provides.
+**Fourth catch-up batch — all four fully done:**
+- **Comment pinning & sorting**: the post author can pin any comment
+  (📌, floats to the top regardless of sort) — the `is_pinned` column
+  existed since Phase 1 but had no UI until now. Comments can be sorted
+  Newest / Oldest / Top liked via a dropdown on the post page.
+- **Community Events**: any member can create an event (title,
+  description, date/time, location) inside a community; members RSVP
+  Going/Interested, with a live "N going" count.
+- **Rate limiting** — real, enforced in the database (no external
+  service): follows capped at 50/hour, comments at 20/minute, direct
+  messages at 30/minute, and reports at 20/hour, all per user. Hitting
+  the limit shows as an insert error, same as any other RLS rejection —
+  this is what "do not allow a single abusive user to spam thousands of
+  accounts" (from the original brief) becomes in practice here.
+- **Admin Audit Log** (`/pages/audit-log.html`, linked from Analytics):
+  every admin action — verify/unverify, suspend/unsuspend, report
+  review/dismiss — is recorded with who did it and when. Admin-only.
+
+**Still genuinely missing** (short list, unchanged reasons): malware
+scanning on uploads and adaptive video streaming — both need a paid
+third-party service or infrastructure well beyond a Supabase+static-site
+setup.
 
 ## What's next
 
