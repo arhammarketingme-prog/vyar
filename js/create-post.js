@@ -1,4 +1,4 @@
-import { supabase, requireAuth, showError } from "./supabaseClient.js";
+import { supabase, requireAuth, showError, uploadWithProgress } from "./supabaseClient.js";
 
 export async function initCreatePost() {
   const session = await requireAuth();
@@ -82,9 +82,10 @@ export async function initCreatePost() {
       if (postType === "reel" && !files[0].type.startsWith("video")) throw new Error("Reels must be a video file.");
 
       if (postType === "reel") {
-        submitBtn.textContent = "Cropping to 9:16...";
         const { autoCropTo9x16 } = await import("./video-crop.js");
-        files[0] = await autoCropTo9x16(files[0]);
+        files[0] = await autoCropTo9x16(files[0], {
+          onProgress: (frac) => { submitBtn.textContent = `Preparing video... ${Math.round(frac * 100)}%`; },
+        });
         submitBtn.textContent = "Posting...";
 
         const MAX_BYTES = 45 * 1024 * 1024; // stay safely under Supabase's 50MB limit
@@ -112,10 +113,11 @@ export async function initCreatePost() {
         const ext = file.name.split(".").pop();
         const path = `${session.user.id}/${post.id}/${i}.${ext}`;
 
-        const { error: uploadErr } = await supabase.storage
-          .from("post-media")
-          .upload(path, file, { upsert: false, contentType: file.type });
-        if (uploadErr) throw uploadErr;
+        submitBtn.textContent = files.length > 1 ? `Uploading ${i + 1}/${files.length}... 0%` : "Uploading... 0%";
+        await uploadWithProgress("post-media", path, file, session.access_token, (frac) => {
+          const pct = Math.round(frac * 100);
+          submitBtn.textContent = files.length > 1 ? `Uploading ${i + 1}/${files.length}... ${pct}%` : `Uploading... ${pct}%`;
+        });
 
         const { error: mediaErr } = await supabase.from("post_media").insert({
           post_id: post.id,

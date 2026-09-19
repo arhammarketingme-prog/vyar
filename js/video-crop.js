@@ -9,7 +9,7 @@
 // If the browser is missing any of the required APIs, it quietly falls
 // back to uploading the original file untouched rather than blocking
 // the post.
-export function autoCropTo9x16(file, { targetWidth = 720 } = {}) {
+export function autoCropTo9x16(file, { targetWidth = 720, onProgress } = {}) {
   return new Promise((resolveOuter) => {
     let settled = false;
     const resolve = (v) => {
@@ -51,6 +51,18 @@ export function autoCropTo9x16(file, { targetWidth = 720 } = {}) {
 
       const srcRatio = vw / vh;
       const targetRatio = targetWidth / targetHeight; // 9/16 portrait
+
+      // Fast path: if the clip is already close to 9:16 and already
+      // small enough to upload as-is, skip re-encoding entirely —
+      // re-recording in real time is the slow part, so avoiding it
+      // whenever it isn't actually needed makes uploads much faster.
+      const ALREADY_OK_BYTES = 20 * 1024 * 1024;
+      if (Math.abs(srcRatio - targetRatio) < 0.04 && file.size <= ALREADY_OK_BYTES) {
+        cleanupAndFallback();
+        return;
+      }
+
+      if (onProgress) onProgress(0);
 
       // Pick a video bitrate — and, if needed, a shorter duration — so
       // the output always fits our size budget automatically. Short
@@ -137,6 +149,7 @@ export function autoCropTo9x16(file, { targetWidth = 720 } = {}) {
       recorder.onerror = cleanupAndFallback;
       recorder.onstop = () => {
         URL.revokeObjectURL(video.src);
+        if (onProgress) onProgress(1);
         if (chunks.length === 0) { resolve(file); return; }
         const ext = mimeType.includes("mp4") ? "mp4" : "webm";
         const blob = new Blob(chunks, { type: mimeType.split(";")[0] });
@@ -156,6 +169,10 @@ export function autoCropTo9x16(file, { targetWidth = 720 } = {}) {
         clearTimeout(stopTimerId);
         if (recorder.state !== "inactive") recorder.stop();
       };
+
+      video.addEventListener("timeupdate", () => {
+        if (onProgress) onProgress(Math.min(1, video.currentTime / recordSeconds));
+      });
 
       video.addEventListener("play", () => {
         recorder.start();
