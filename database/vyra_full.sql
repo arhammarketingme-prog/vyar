@@ -514,7 +514,7 @@ values ('avatars', 'avatars', true, 5242880, array['image/jpeg', 'image/png', 'i
 on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('post-media', 'post-media', true, 52428800, array['image/jpeg', 'image/png', 'image/webp', 'video/mp4'])
+values ('post-media', 'post-media', true, 52428800, array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm'])
 on conflict (id) do nothing;
 
 -- AVATARS: any authenticated user can upload to their own folder (userid/...)

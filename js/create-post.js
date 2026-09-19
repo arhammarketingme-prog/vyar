@@ -80,6 +80,13 @@ export async function initCreatePost() {
       if (postType === "reel" && files.length > 1) throw new Error("A Reel is a single video.");
       if (postType === "reel" && !files[0].type.startsWith("video")) throw new Error("Reels must be a video file.");
 
+      if (postType === "reel") {
+        submitBtn.textContent = "Cropping to 9:16...";
+        const { autoCropTo9x16 } = await import("./video-crop.js");
+        files[0] = await autoCropTo9x16(files[0]);
+        submitBtn.textContent = "Posting...";
+      }
+
       // 1. Create the post row first so we have an id for the storage path.
       const { data: post, error: postErr } = await supabase
         .from("posts")
