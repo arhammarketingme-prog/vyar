@@ -60,6 +60,9 @@
         badge.textContent = count > 9 ? "9+" : count;
         badge.classList.remove("hidden");
       }
+
+      const { initLiveNotifications } = await import("../js/live-notifications.js");
+      initLiveNotifications(session);
     });
 
     const tabs = ["tab-foryou", "tab-following", "tab-recommended"];
