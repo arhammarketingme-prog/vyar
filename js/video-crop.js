@@ -9,7 +9,7 @@
 // If the browser is missing any of the required APIs, it quietly falls
 // back to uploading the original file untouched rather than blocking
 // the post.
-export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = {}) {
+export function autoCropTo9x16(file, { targetWidth = 720 } = {}) {
   return new Promise((resolveOuter) => {
     let settled = false;
     const resolve = (v) => {
@@ -17,7 +17,10 @@ export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = 
       settled = true;
       resolveOuter(v);
     };
-    const timeoutId = setTimeout(() => resolve(file), timeoutMs);
+    // Safety net only for the "metadata never loads" case — once we know
+    // the clip's duration, this gets replaced by a duration-aware one
+    // sized to how long the recording will actually take.
+    let timeoutId = setTimeout(() => resolve(file), 20000);
     const finish = (v) => {
       clearTimeout(timeoutId);
       resolve(v);
@@ -49,18 +52,28 @@ export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = 
       const srcRatio = vw / vh;
       const targetRatio = targetWidth / targetHeight; // 9/16 portrait
 
-      // Pick a video bitrate that fits the whole clip under our size
-      // budget, instead of a fixed rate that only works for short clips.
-      // A short reel gets full quality (capped at MAX); a long one gets
-      // scaled down automatically; only a genuinely very long upload
-      // (~11+ minutes) can't fit even at the quality floor.
-      const TARGET_BYTES = 42 * 1024 * 1024; // stay under the 45MB check with margin
+      // Pick a video bitrate — and, if needed, a shorter duration — so
+      // the output always fits our size budget automatically. Short
+      // clips get full quality; longer ones get a lower bitrate; a
+      // genuinely very long upload (~11+ minutes) gets trimmed to
+      // however many seconds fit at the quality floor, and that's what
+      // gets uploaded — no manual step for the user either way.
+      const TARGET_BYTES = 42 * 1024 * 1024; // stay under Supabase's 50MB limit with margin
       const AUDIO_BITRATE = 128_000;
       const MIN_VIDEO_BITRATE = 400_000;
       const MAX_VIDEO_BITRATE = 2_500_000;
       const duration = isFinite(video.duration) && video.duration > 0 ? video.duration : 30;
-      const idealVideoBitrate = (TARGET_BYTES * 8) / duration - AUDIO_BITRATE;
+      const maxSecondsAtFloor = (TARGET_BYTES * 8) / (MIN_VIDEO_BITRATE + AUDIO_BITRATE);
+      const recordSeconds = Math.min(duration, maxSecondsAtFloor);
+      const willTrim = duration > maxSecondsAtFloor;
+      const idealVideoBitrate = (TARGET_BYTES * 8) / recordSeconds - AUDIO_BITRATE;
       const videoBitrate = Math.min(MAX_VIDEO_BITRATE, Math.max(MIN_VIDEO_BITRATE, idealVideoBitrate));
+
+      // Now that we know how long the recording will actually take,
+      // give it that much time plus a buffer for encoding overhead —
+      // instead of the short "metadata didn't load" timeout.
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => resolve(file), recordSeconds * 1000 + 15000);
 
       let sx, sy, sw, sh;
       if (srcRatio > targetRatio) {
@@ -131,20 +144,30 @@ export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = 
       };
 
       let rafId;
+      let stopTimerId;
       function drawFrame() {
         if (video.paused || video.ended) return;
         ctx.drawImage(video, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
         rafId = requestAnimationFrame(drawFrame);
       }
 
+      const stopRecording = () => {
+        cancelAnimationFrame(rafId);
+        clearTimeout(stopTimerId);
+        if (recorder.state !== "inactive") recorder.stop();
+      };
+
       video.addEventListener("play", () => {
         recorder.start();
         drawFrame();
+        if (willTrim) {
+          // Clip is longer than fits our size budget — stop the
+          // recording (and therefore the upload) at recordSeconds,
+          // automatically using just the first part of the video.
+          stopTimerId = setTimeout(stopRecording, recordSeconds * 1000);
+        }
       });
-      video.addEventListener("ended", () => {
-        cancelAnimationFrame(rafId);
-        recorder.stop();
-      });
+      video.addEventListener("ended", stopRecording);
 
       video.play().catch(cleanupAndFallback);
     });
