@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="manifest" href="../manifest.json">
-<meta name="theme-color" content="#ff5d3b">
+<meta name="theme-color" content="#f0a83a">
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
 <title>New story — VYRA</title>
 <link rel="stylesheet" href="../css/style.css">
@@ -38,11 +38,11 @@
     position: absolute;
     transform: translate(-50%, -50%);
     background: var(--vyra-accent);
-    color: white;
+    color: var(--vyra-accent-ink);
     padding: 8px 14px;
     border-radius: 20px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     pointer-events: none;
   }
 </style>
@@ -64,7 +64,7 @@
       <button type="button" class="tool-btn" id="add-text-btn">🅣 Text</button>
       <button type="button" class="tool-btn" id="draw-toggle-btn">✏️ Draw</button>
       <input type="color" id="draw-color-input" value="#ffffff" style="width:40px; height:36px; padding:0; border-radius:8px;">
-      <button type="button" class="tool-btn hidden" id="tip-sticker-btn" style="background:var(--vyra-accent); border-color:var(--vyra-accent);">💰 Tip Sticker</button>
+      <button type="button" class="tool-btn hidden" id="tip-sticker-btn" style="background:var(--vyra-accent); border-color:var(--vyra-accent); color:var(--vyra-accent-ink); font-weight:700;">💰 Tip Sticker</button>
     </div>
     <div class="tool-row">
       <button type="button" class="tool-btn" id="poll-sticker-btn">📊 Poll</button>
