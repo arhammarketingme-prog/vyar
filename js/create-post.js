@@ -86,6 +86,13 @@ export async function initCreatePost() {
         const { autoCropTo9x16 } = await import("./video-crop.js");
         files[0] = await autoCropTo9x16(files[0]);
         submitBtn.textContent = "Posting...";
+
+        const MAX_BYTES = 45 * 1024 * 1024; // stay safely under Supabase's 50MB limit
+        if (files[0].size > MAX_BYTES) {
+          throw new Error(
+            `Video is still ${(files[0].size / (1024 * 1024)).toFixed(1)}MB after compression — please use a shorter clip (under ~60 seconds) or a lower camera quality setting.`
+          );
+        }
       }
 
       // 1. Create the post row first so we have an id for the storage path.

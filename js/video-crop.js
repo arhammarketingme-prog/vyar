@@ -69,16 +69,24 @@ export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = 
       canvas.height = targetHeight;
       const ctx = canvas.getContext("2d");
 
-      let mixedStream;
+      let canvasStream;
       try {
-        const canvasStream = canvas.captureStream(30);
-        const audioTracks = video.captureStream ? video.captureStream().getAudioTracks() : [];
-        mixedStream = audioTracks.length > 0
-          ? new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
-          : canvasStream;
+        canvasStream = canvas.captureStream(30);
       } catch (e) {
         cleanupAndFallback();
         return;
+      }
+      let mixedStream = canvasStream;
+      try {
+        const audioTracks = video.captureStream ? video.captureStream().getAudioTracks() : [];
+        if (audioTracks.length > 0) {
+          mixedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
+        }
+      } catch (e) {
+        // Audio capture failed on this device/browser — keep going with a
+        // video-only (silent) crop rather than aborting and falling back
+        // to the full-size original file, which is often too large to
+        // upload on the Free plan's 50MB limit.
       }
 
       const mimeCandidates = [
@@ -92,7 +100,7 @@ export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = 
 
       let recorder;
       try {
-        recorder = new MediaRecorder(mixedStream, { mimeType, videoBitsPerSecond: 2_500_000 });
+        recorder = new MediaRecorder(mixedStream, { mimeType, videoBitsPerSecond: 1_800_000 });
       } catch (e) {
         cleanupAndFallback();
         return;
