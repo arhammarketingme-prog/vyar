@@ -44,18 +44,44 @@ create table if not exists public.profiles (
 create index if not exists idx_profiles_username_trgm on public.profiles using gin (username gin_trgm_ops);
 
 -- Auto-create a profile row whenever a new auth.users row appears.
+-- Google/Facebook OAuth signups don't send a "username" field — only
+-- full_name/name/email — so we build a readable username from whichever
+-- of those is available, then append a short suffix to keep it unique.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  base_username text;
+  final_username text;
 begin
+  base_username := lower(regexp_replace(
+    coalesce(
+      nullif(new.raw_user_meta_data->>'username', ''),
+      nullif(new.raw_user_meta_data->>'full_name', ''),
+      nullif(new.raw_user_meta_data->>'name', ''),
+      split_part(new.email, '@', 1)
+    ),
+    '[^a-zA-Z0-9_.]+', '_', 'g'
+  ));
+  base_username := substr(base_username, 1, 20);
+  if base_username is null or char_length(base_username) < 3 then
+    base_username := 'user';
+  end if;
+  final_username := base_username || '_' || substr(new.id::text, 1, 6);
+
   insert into public.profiles (id, username, display_name)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'username', 'user_' || substr(new.id::text, 1, 8)),
-    coalesce(new.raw_user_meta_data->>'display_name', '')
+    final_username,
+    coalesce(
+      nullif(new.raw_user_meta_data->>'display_name', ''),
+      nullif(new.raw_user_meta_data->>'full_name', ''),
+      nullif(new.raw_user_meta_data->>'name', ''),
+      ''
+    )
   );
   return new;
 end;
