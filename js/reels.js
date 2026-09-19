@@ -1,5 +1,11 @@
 import { supabase, requireAuth } from "./supabaseClient.js";
 
+// Reels autoplay muted by default (browsers require this for autoplay
+// without a user gesture). The mute toggle updates this so the choice
+// carries over as the viewer scrolls to the next reel — same as
+// Instagram/YouTube Shorts behaviour.
+let isMuted = true;
+
 export async function initReels() {
   const session = await requireAuth();
   if (!session) return;
@@ -29,7 +35,7 @@ export async function initReels() {
   // Setting these as JS properties after insertion makes autoplay
   // actually work everywhere.
   document.querySelectorAll(".reel-slide video").forEach((video) => {
-    video.muted = true;
+    video.muted = isMuted;
     video.playsInline = true;
     video.setAttribute("webkit-playsinline", "true");
   });
@@ -41,7 +47,7 @@ export async function initReels() {
         const video = entry.target.querySelector("video");
         if (!video) return;
         if (entry.isIntersecting) {
-          video.muted = true; // re-assert — some browsers reset this on reflow
+          video.muted = isMuted;
           const playPromise = video.play();
           if (playPromise) playPromise.catch(() => showTapToPlay(entry.target, video));
         } else {
@@ -60,7 +66,7 @@ function showTapToPlay(slide, video) {
   btn.className = "tap-to-play";
   btn.textContent = "▶";
   btn.style.cssText =
-    "position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:48px; color:white; background:rgba(0,0,0,0.25); cursor:pointer;";
+    "position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:48px; color:white; background:rgba(0,0,0,0.25); cursor:pointer; z-index:4;";
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     video.play().then(() => btn.remove()).catch(() => {});
@@ -77,17 +83,24 @@ function renderReel(reel, session) {
   const slide = document.createElement("div");
   slide.className = "reel-slide";
   slide.innerHTML = `
-    <video src="${url}" loop muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+    <video src="${url}" loop playsinline style="width:100%; height:100%; object-fit:cover;"></video>
     <div class="reel-overlay">
       <strong>@${escapeHtml(reel.author.username)}</strong>
       <p>${escapeHtml(reel.caption || "")}</p>
       <div class="muted">${reel.like_count} likes · ${reel.comment_count} comments</div>
     </div>
+    <div class="mute-toggle">${isMuted ? "🔇" : "🔊"}</div>
   `;
   slide.addEventListener("click", (e) => {
     const video = slide.querySelector("video");
     if (video.paused) video.play();
     else video.pause();
+  });
+  slide.querySelector(".mute-toggle").addEventListener("click", (e) => {
+    e.stopPropagation();
+    isMuted = !isMuted;
+    document.querySelectorAll(".reel-slide video").forEach((v) => (v.muted = isMuted));
+    document.querySelectorAll(".mute-toggle").forEach((el) => (el.textContent = isMuted ? "🔇" : "🔊"));
   });
   return slide;
 }

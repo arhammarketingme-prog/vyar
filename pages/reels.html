@@ -10,26 +10,42 @@
 <title>Reels — VYRA</title>
 <link rel="stylesheet" href="../css/style.css">
 <style>
-  body { margin: 0; padding: 0; background: black; }
+  html, body { margin: 0; padding: 0; background: black; height: 100%; overflow: hidden; }
   #reels-container {
     height: 100vh;
+    height: 100dvh; /* actual visible height on mobile, not the address-bar-inflated 100vh */
     overflow-y: scroll;
     scroll-snap-type: y mandatory;
   }
   .reel-slide {
     height: 100vh;
+    height: 100dvh;
     scroll-snap-align: start;
     position: relative;
     display: flex;
     align-items: flex-end;
+    overflow: hidden;
   }
   .reel-overlay {
     position: absolute;
     bottom: 70px;
     left: 16px;
-    right: 16px;
+    right: 76px;
     color: white;
     text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  }
+  .mute-toggle {
+    position: absolute;
+    bottom: 70px;
+    right: 16px;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 5;
   }
 </style>
 </head>
