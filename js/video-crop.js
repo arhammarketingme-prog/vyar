@@ -9,10 +9,22 @@
 // If the browser is missing any of the required APIs, it quietly falls
 // back to uploading the original file untouched rather than blocking
 // the post.
-export function autoCropTo9x16(file, { targetWidth = 720 } = {}) {
-  return new Promise((resolve) => {
+export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = {}) {
+  return new Promise((resolveOuter) => {
+    let settled = false;
+    const resolve = (v) => {
+      if (settled) return;
+      settled = true;
+      resolveOuter(v);
+    };
+    const timeoutId = setTimeout(() => resolve(file), timeoutMs);
+    const finish = (v) => {
+      clearTimeout(timeoutId);
+      resolve(v);
+    };
+
     if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
-      resolve(file);
+      finish(file);
       return;
     }
 

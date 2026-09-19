@@ -70,6 +70,7 @@ export async function initCreatePost() {
     const submitBtn = form.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.textContent = "Posting...";
+    let createdPostId = null;
 
     try {
       const caption = form.caption.value.trim();
@@ -94,6 +95,7 @@ export async function initCreatePost() {
         .select()
         .single();
       if (postErr) throw postErr;
+      createdPostId = post.id;
 
       // 2. Upload each file, then record it in post_media.
       for (let i = 0; i < files.length; i++) {
@@ -136,7 +138,14 @@ export async function initCreatePost() {
 
       window.location.href = postType === "reel" ? "reels.html" : "feed.html";
     } catch (err) {
+      // If the post row was created but the media never finished
+      // uploading, don't leave a broken/empty post behind — clean it
+      // up so the feed and reels list never show blank cards.
+      if (createdPostId) {
+        await supabase.from("posts").delete().eq("id", createdPostId);
+      }
       showError(errEl, err);
+      alert("Post failed: " + (err?.message || "Unknown error") + "\n\nNothing was posted — please try again.");
       submitBtn.disabled = false;
       submitBtn.textContent = "Share";
     }
