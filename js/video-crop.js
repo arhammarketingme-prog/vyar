@@ -49,6 +49,19 @@ export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = 
       const srcRatio = vw / vh;
       const targetRatio = targetWidth / targetHeight; // 9/16 portrait
 
+      // Pick a video bitrate that fits the whole clip under our size
+      // budget, instead of a fixed rate that only works for short clips.
+      // A short reel gets full quality (capped at MAX); a long one gets
+      // scaled down automatically; only a genuinely very long upload
+      // (~11+ minutes) can't fit even at the quality floor.
+      const TARGET_BYTES = 42 * 1024 * 1024; // stay under the 45MB check with margin
+      const AUDIO_BITRATE = 128_000;
+      const MIN_VIDEO_BITRATE = 400_000;
+      const MAX_VIDEO_BITRATE = 2_500_000;
+      const duration = isFinite(video.duration) && video.duration > 0 ? video.duration : 30;
+      const idealVideoBitrate = (TARGET_BYTES * 8) / duration - AUDIO_BITRATE;
+      const videoBitrate = Math.min(MAX_VIDEO_BITRATE, Math.max(MIN_VIDEO_BITRATE, idealVideoBitrate));
+
       let sx, sy, sw, sh;
       if (srcRatio > targetRatio) {
         // Wider than 9:16 (landscape/square) — crop the left/right edges.
@@ -100,7 +113,7 @@ export function autoCropTo9x16(file, { targetWidth = 720, timeoutMs = 45000 } = 
 
       let recorder;
       try {
-        recorder = new MediaRecorder(mixedStream, { mimeType, videoBitsPerSecond: 1_800_000 });
+        recorder = new MediaRecorder(mixedStream, { mimeType, videoBitsPerSecond: Math.round(videoBitrate) });
       } catch (e) {
         cleanupAndFallback();
         return;

@@ -89,8 +89,10 @@ export async function initCreatePost() {
 
         const MAX_BYTES = 45 * 1024 * 1024; // stay safely under Supabase's 50MB limit
         if (files[0].size > MAX_BYTES) {
+          const maxSeconds = Math.floor((42 * 1024 * 1024 * 8) / (400_000 + 128_000));
           throw new Error(
-            `Video is still ${(files[0].size / (1024 * 1024)).toFixed(1)}MB after compression — please use a shorter clip (under ~60 seconds) or a lower camera quality setting.`
+            `Video is still ${(files[0].size / (1024 * 1024)).toFixed(1)}MB even after compression. ` +
+            `Please trim it to under ${maxSeconds} seconds (about ${Math.floor(maxSeconds / 60)} min ${maxSeconds % 60} sec) and try again.`
           );
         }
       }
