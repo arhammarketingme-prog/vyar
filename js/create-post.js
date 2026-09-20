@@ -134,9 +134,26 @@ export async function initCreatePost() {
       if (postType === "reel" && !files[0].type.startsWith("video")) throw new Error("Reels must be a video file.");
 
       if (postType === "reel") {
+        // Peek at duration first so we can warn about a long wait before
+        // committing to it — better than surprising the user mid-way.
+        const { getVideoDuration, splitReelInto1MinParts } = await import("./video-crop.js");
+        const roughDuration = await getVideoDuration(files[0]).catch(() => 0);
+        const roughParts = Math.max(1, Math.ceil(roughDuration / 60));
+        if (roughParts > 1) {
+          const estMinutes = Math.ceil(roughDuration / 60);
+          const proceed = confirm(
+            `This video is about ${estMinutes} minutes long and will be split into ${roughParts} separate Reels. ` +
+            `Processing takes roughly as long as the video itself (~${estMinutes} min) — keep this tab open until it finishes.\n\nContinue?`
+          );
+          if (!proceed) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Share";
+            return;
+          }
+        }
+
         // Reels are capped at 60 seconds. A longer upload is automatically
         // split into consecutive 60-second parts, each posted separately.
-        const { splitReelInto1MinParts } = await import("./video-crop.js");
         const parts = await splitReelInto1MinParts(files[0], {
           onProgress: (partIndex, partCount, frac) => {
             const label = partCount > 1 ? `Part ${partIndex + 1}/${partCount}` : "Preparing video";

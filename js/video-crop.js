@@ -5,6 +5,7 @@
 // enough skips re-encoding entirely (fast path).
 
 const SEGMENT_SECONDS = 60;
+const MAX_PARTS = 10; // hard cap — a longer clip gets rejected up front with a clear message
 const VIDEO_BITRATE = 2_500_000; // safe for any clip up to 60s within a 42MB budget
 const ALREADY_OK_BYTES = 20 * 1024 * 1024;
 
@@ -18,6 +19,16 @@ function loadVideo(file) {
     video.addEventListener("loadedmetadata", () => resolve(video), { once: true });
     video.addEventListener("error", () => reject(new Error("Could not read video metadata")), { once: true });
   });
+}
+
+// Quick duration check without doing any cropping/encoding work — used
+// to warn the user up front if a long clip is about to trigger a
+// multi-part split.
+export async function getVideoDuration(file) {
+  const video = await loadVideo(file);
+  const duration = isFinite(video.duration) ? video.duration : 0;
+  URL.revokeObjectURL(video.src);
+  return duration;
 }
 
 function pickMimeType() {
@@ -148,6 +159,14 @@ export async function splitReelInto1MinParts(file, { targetWidth = 720, onProgre
   }
 
   const partCount = Math.max(1, Math.ceil(duration / SEGMENT_SECONDS));
+  if (partCount > MAX_PARTS) {
+    const maxMinutes = Math.floor((MAX_PARTS * SEGMENT_SECONDS) / 60);
+    throw new Error(
+      `This video is too long (${Math.round(duration / 60)} min). Reels can be split into at most ${MAX_PARTS} parts — ` +
+      `please trim it to under ${maxMinutes} minutes and try again.`
+    );
+  }
+
   const parts = [];
   for (let i = 0; i < partCount; i++) {
     const start = i * SEGMENT_SECONDS;
