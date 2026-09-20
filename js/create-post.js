@@ -133,6 +133,14 @@ export async function initCreatePost() {
       if (postType === "reel" && files.length > 1) throw new Error("A Reel is a single video.");
       if (postType === "reel" && !files[0].type.startsWith("video")) throw new Error("Reels must be a video file.");
 
+      const SUPPORTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/x-m4v", "video/3gpp"];
+      if (postType === "reel" && !SUPPORTED_VIDEO_TYPES.includes(files[0].type)) {
+        throw new Error(
+          `This video format (${files[0].type || "unknown"}) isn't supported by web browsers. ` +
+          `Please convert it to MP4 first (most phones save in MP4 by default) and try again.`
+        );
+      }
+
       if (postType === "reel") {
         // Peek at duration first so we can warn about a long wait before
         // committing to it — better than surprising the user mid-way.
