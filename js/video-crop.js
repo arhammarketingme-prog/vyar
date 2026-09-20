@@ -21,12 +21,40 @@ function loadVideo(file) {
   });
 }
 
+// Some video files (certain Android recordings, some webm/mkv-derived
+// mp4s) report duration as Infinity until the browser has actually
+// seeked through them — a known browser quirk, not a broken file.
+// Seeking far forward once forces the browser to resolve the real
+// duration; without this, a 10-minute clip can silently get treated
+// as if it were only ~60 seconds long.
+function getReliableDuration(video) {
+  return new Promise((resolve) => {
+    if (isFinite(video.duration) && video.duration > 0) {
+      resolve(video.duration);
+      return;
+    }
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      video.removeEventListener("seeked", onSeeked);
+      const fixed = isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+      video.currentTime = 0;
+      resolve(fixed);
+    };
+    const onSeeked = () => finish();
+    video.addEventListener("seeked", onSeeked);
+    video.currentTime = 1e7; // seek far beyond any real video's length
+    setTimeout(finish, 4000); // fallback in case 'seeked' never fires
+  });
+}
+
 // Quick duration check without doing any cropping/encoding work — used
 // to warn the user up front if a long clip is about to trigger a
 // multi-part split.
 export async function getVideoDuration(file) {
   const video = await loadVideo(file);
-  const duration = isFinite(video.duration) ? video.duration : 0;
+  const duration = await getReliableDuration(video);
   URL.revokeObjectURL(video.src);
   return duration;
 }
@@ -65,7 +93,8 @@ function cropSegment(file, startTime, endTime, { targetWidth = 720, onProgress }
     video.playsInline = true;
     video.src = URL.createObjectURL(file);
 
-    const timeoutId = setTimeout(() => resolve(null), segDuration * 1000 + 20000);
+    const safetyMs = isFinite(segDuration) ? segDuration * 1000 + 20000 : 30 * 60 * 1000;
+    const timeoutId = setTimeout(() => resolve(null), safetyMs);
     const cleanup = () => { clearTimeout(timeoutId); URL.revokeObjectURL(video.src); };
 
     video.addEventListener("error", () => { cleanup(); resolve(null); }, { once: true });
@@ -143,13 +172,24 @@ export async function splitReelInto1MinParts(file, { targetWidth = 720, onProgre
   } catch (e) {
     return [file]; // can't read metadata — upload as-is rather than block the user
   }
-  const duration = isFinite(probe.duration) && probe.duration > 0 ? probe.duration : SEGMENT_SECONDS;
+  const duration = await getReliableDuration(probe);
   const vw = probe.videoWidth, vh = probe.videoHeight;
   URL.revokeObjectURL(probe.src);
 
   const targetHeight = Math.round((targetWidth * 16) / 9);
   const targetRatio = targetWidth / targetHeight;
   const srcRatio = vw && vh ? vw / vh : targetRatio;
+
+  if (!duration || duration <= 0) {
+    // Truly couldn't determine length even after the seek workaround —
+    // process the whole thing as one part, stopping at its natural end,
+    // rather than guessing a duration and getting it wrong.
+    const result = await cropSegment(file, 0, Infinity, {
+      targetWidth,
+      onProgress: (frac) => { if (onProgress) onProgress(0, 1, frac); },
+    });
+    return result ? [result] : [file];
+  }
 
   // Fast path: already one short, already-portrait, already-small clip —
   // skip re-encoding entirely.
