@@ -1,107 +1,66 @@
-// Automatically center-crops an uploaded video to a 9:16 portrait frame
-// (the standard Reel size) before it's uploaded — so a landscape clip,
-// a square clip, or an already-portrait clip all end up looking right
-// in the Reels player, with no manual cropping step for the user.
-//
-// How it works: draws each frame of the source video onto a 9:16 canvas
-// (cropped from the center), captures that canvas as a stream, and
-// re-records it with MediaRecorder — including the original audio track.
-// If the browser is missing any of the required APIs, it quietly falls
-// back to uploading the original file untouched rather than blocking
-// the post.
-export function autoCropTo9x16(file, { targetWidth = 720, onProgress } = {}) {
+// Reels are capped at 60 seconds. A longer upload isn't rejected — it's
+// automatically split into consecutive 60-second parts, each cropped to
+// 9:16 and compressed independently, ready to be posted as separate
+// Reels. A clip that's already <=60s and already close to 9:16/small
+// enough skips re-encoding entirely (fast path).
+
+const SEGMENT_SECONDS = 60;
+const VIDEO_BITRATE = 2_500_000; // safe for any clip up to 60s within a 42MB budget
+const ALREADY_OK_BYTES = 20 * 1024 * 1024;
+
+function loadVideo(file) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.src = URL.createObjectURL(file);
+    video.addEventListener("loadedmetadata", () => resolve(video), { once: true });
+    video.addEventListener("error", () => reject(new Error("Could not read video metadata")), { once: true });
+  });
+}
+
+function pickMimeType() {
+  const candidates = [
+    "video/webm;codecs=vp9,opus",
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4",
+  ];
+  return candidates.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+}
+
+function computeCropRect(vw, vh, targetWidth, targetHeight) {
+  const srcRatio = vw / vh;
+  const targetRatio = targetWidth / targetHeight;
+  if (srcRatio > targetRatio) {
+    const sh = vh, sw = vh * targetRatio;
+    return { sx: (vw - sw) / 2, sy: 0, sw, sh };
+  }
+  const sw = vw, sh = vw / targetRatio;
+  return { sx: 0, sy: (vh - sh) / 2, sw, sh };
+}
+
+// Crops+compresses one [startTime, endTime) slice of the source video.
+function cropSegment(file, startTime, endTime, { targetWidth = 720, onProgress } = {}) {
   return new Promise((resolveOuter) => {
     let settled = false;
-    const resolve = (v) => {
-      if (settled) return;
-      settled = true;
-      resolveOuter(v);
-    };
-    // Safety net only for the "metadata never loads" case — once we know
-    // the clip's duration, this gets replaced by a duration-aware one
-    // sized to how long the recording will actually take.
-    let timeoutId = setTimeout(() => resolve(file), 20000);
-    const finish = (v) => {
-      clearTimeout(timeoutId);
-      resolve(v);
-    };
+    const resolve = (v) => { if (!settled) { settled = true; resolveOuter(v); } };
 
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
-      finish(file);
-      return;
-    }
-
+    const segDuration = endTime - startTime;
     const targetHeight = Math.round((targetWidth * 16) / 9);
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
     video.src = URL.createObjectURL(file);
 
-    const cleanupAndFallback = () => {
-      URL.revokeObjectURL(video.src);
-      resolve(file);
-    };
+    const timeoutId = setTimeout(() => resolve(null), segDuration * 1000 + 20000);
+    const cleanup = () => { clearTimeout(timeoutId); URL.revokeObjectURL(video.src); };
 
-    video.addEventListener("error", cleanupAndFallback);
+    video.addEventListener("error", () => { cleanup(); resolve(null); }, { once: true });
 
     video.addEventListener("loadedmetadata", () => {
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      if (!vw || !vh) { cleanupAndFallback(); return; }
-
-      const srcRatio = vw / vh;
-      const targetRatio = targetWidth / targetHeight; // 9/16 portrait
-
-      // Fast path: if the clip is already close to 9:16 and already
-      // small enough to upload as-is, skip re-encoding entirely —
-      // re-recording in real time is the slow part, so avoiding it
-      // whenever it isn't actually needed makes uploads much faster.
-      const ALREADY_OK_BYTES = 20 * 1024 * 1024;
-      if (Math.abs(srcRatio - targetRatio) < 0.04 && file.size <= ALREADY_OK_BYTES) {
-        cleanupAndFallback();
-        return;
-      }
-
-      if (onProgress) onProgress(0);
-
-      // Pick a video bitrate — and, if needed, a shorter duration — so
-      // the output always fits our size budget automatically. Short
-      // clips get full quality; longer ones get a lower bitrate; a
-      // genuinely very long upload (~11+ minutes) gets trimmed to
-      // however many seconds fit at the quality floor, and that's what
-      // gets uploaded — no manual step for the user either way.
-      const TARGET_BYTES = 42 * 1024 * 1024; // stay under Supabase's 50MB limit with margin
-      const AUDIO_BITRATE = 128_000;
-      const MIN_VIDEO_BITRATE = 400_000;
-      const MAX_VIDEO_BITRATE = 2_500_000;
-      const duration = isFinite(video.duration) && video.duration > 0 ? video.duration : 30;
-      const maxSecondsAtFloor = (TARGET_BYTES * 8) / (MIN_VIDEO_BITRATE + AUDIO_BITRATE);
-      const recordSeconds = Math.min(duration, maxSecondsAtFloor);
-      const willTrim = duration > maxSecondsAtFloor;
-      const idealVideoBitrate = (TARGET_BYTES * 8) / recordSeconds - AUDIO_BITRATE;
-      const videoBitrate = Math.min(MAX_VIDEO_BITRATE, Math.max(MIN_VIDEO_BITRATE, idealVideoBitrate));
-
-      // Now that we know how long the recording will actually take,
-      // give it that much time plus a buffer for encoding overhead —
-      // instead of the short "metadata didn't load" timeout.
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => resolve(file), recordSeconds * 1000 + 15000);
-
-      let sx, sy, sw, sh;
-      if (srcRatio > targetRatio) {
-        // Wider than 9:16 (landscape/square) — crop the left/right edges.
-        sh = vh;
-        sw = vh * targetRatio;
-        sx = (vw - sw) / 2;
-        sy = 0;
-      } else {
-        // Narrower/taller than 9:16 — crop the top/bottom edges.
-        sw = vw;
-        sh = vw / targetRatio;
-        sx = 0;
-        sy = (vh - sh) / 2;
-      }
-
+      const { sx, sy, sw, sh } = computeCropRect(video.videoWidth, video.videoHeight, targetWidth, targetHeight);
       const canvas = document.createElement("canvas");
       canvas.width = targetWidth;
       canvas.height = targetHeight;
@@ -110,83 +69,96 @@ export function autoCropTo9x16(file, { targetWidth = 720, onProgress } = {}) {
       let canvasStream;
       try {
         canvasStream = canvas.captureStream(30);
-      } catch (e) {
-        cleanupAndFallback();
-        return;
-      }
+      } catch (e) { cleanup(); resolve(null); return; }
+
       let mixedStream = canvasStream;
       try {
         const audioTracks = video.captureStream ? video.captureStream().getAudioTracks() : [];
-        if (audioTracks.length > 0) {
-          mixedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
-        }
-      } catch (e) {
-        // Audio capture failed on this device/browser — keep going with a
-        // video-only (silent) crop rather than aborting and falling back
-        // to the full-size original file, which is often too large to
-        // upload on the Free plan's 50MB limit.
-      }
+        if (audioTracks.length > 0) mixedStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
+      } catch (e) { /* proceed video-only */ }
 
-      const mimeCandidates = [
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm",
-        "video/mp4",
-      ];
-      const mimeType = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m));
-      if (!mimeType) { cleanupAndFallback(); return; }
+      const mimeType = pickMimeType();
+      if (!mimeType) { cleanup(); resolve(null); return; }
 
       let recorder;
       try {
-        recorder = new MediaRecorder(mixedStream, { mimeType, videoBitsPerSecond: Math.round(videoBitrate) });
-      } catch (e) {
-        cleanupAndFallback();
-        return;
-      }
+        recorder = new MediaRecorder(mixedStream, { mimeType, videoBitsPerSecond: VIDEO_BITRATE });
+      } catch (e) { cleanup(); resolve(null); return; }
 
       const chunks = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onerror = cleanupAndFallback;
+      recorder.onerror = () => { cleanup(); resolve(null); };
       recorder.onstop = () => {
-        URL.revokeObjectURL(video.src);
+        cleanup();
         if (onProgress) onProgress(1);
-        if (chunks.length === 0) { resolve(file); return; }
+        if (chunks.length === 0) { resolve(null); return; }
         const ext = mimeType.includes("mp4") ? "mp4" : "webm";
         const blob = new Blob(chunks, { type: mimeType.split(";")[0] });
         resolve(new File([blob], `reel.${ext}`, { type: blob.type }));
       };
 
       let rafId;
-      let stopTimerId;
       function drawFrame() {
-        if (video.paused || video.ended) return;
+        if (video.paused || video.ended || video.currentTime >= endTime) return;
         ctx.drawImage(video, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
         rafId = requestAnimationFrame(drawFrame);
       }
-
-      const stopRecording = () => {
-        cancelAnimationFrame(rafId);
-        clearTimeout(stopTimerId);
-        if (recorder.state !== "inactive") recorder.stop();
-      };
+      const stop = () => { cancelAnimationFrame(rafId); if (recorder.state !== "inactive") recorder.stop(); };
 
       video.addEventListener("timeupdate", () => {
-        if (onProgress) onProgress(Math.min(1, video.currentTime / recordSeconds));
+        if (onProgress) onProgress(Math.min(1, (video.currentTime - startTime) / segDuration));
+        if (video.currentTime >= endTime) stop();
       });
-
-      video.addEventListener("play", () => {
+      video.addEventListener("ended", stop);
+      video.addEventListener("seeked", () => {
         recorder.start();
+        video.play().catch(() => { cleanup(); resolve(null); });
         drawFrame();
-        if (willTrim) {
-          // Clip is longer than fits our size budget — stop the
-          // recording (and therefore the upload) at recordSeconds,
-          // automatically using just the first part of the video.
-          stopTimerId = setTimeout(stopRecording, recordSeconds * 1000);
-        }
-      });
-      video.addEventListener("ended", stopRecording);
+      }, { once: true });
 
-      video.play().catch(cleanupAndFallback);
-    });
+      video.currentTime = startTime;
+    }, { once: true });
   });
+}
+
+// Main entry point. Returns an array of ready-to-upload File objects,
+// each at most 60 seconds, cropped to 9:16. A single-part result means
+// the source was already <=60s (only re-encoded if it needed cropping
+// or was too large; otherwise the original file is returned untouched).
+export async function splitReelInto1MinParts(file, { targetWidth = 720, onProgress } = {}) {
+  let probe;
+  try {
+    probe = await loadVideo(file);
+  } catch (e) {
+    return [file]; // can't read metadata — upload as-is rather than block the user
+  }
+  const duration = isFinite(probe.duration) && probe.duration > 0 ? probe.duration : SEGMENT_SECONDS;
+  const vw = probe.videoWidth, vh = probe.videoHeight;
+  URL.revokeObjectURL(probe.src);
+
+  const targetHeight = Math.round((targetWidth * 16) / 9);
+  const targetRatio = targetWidth / targetHeight;
+  const srcRatio = vw && vh ? vw / vh : targetRatio;
+
+  // Fast path: already one short, already-portrait, already-small clip —
+  // skip re-encoding entirely.
+  if (duration <= SEGMENT_SECONDS && Math.abs(srcRatio - targetRatio) < 0.04 && file.size <= ALREADY_OK_BYTES) {
+    if (onProgress) onProgress(0, 1, 1);
+    return [file];
+  }
+
+  const partCount = Math.max(1, Math.ceil(duration / SEGMENT_SECONDS));
+  const parts = [];
+  for (let i = 0; i < partCount; i++) {
+    const start = i * SEGMENT_SECONDS;
+    const end = Math.min(duration, start + SEGMENT_SECONDS);
+    const result = await cropSegment(file, start, end, {
+      targetWidth,
+      onProgress: (frac) => { if (onProgress) onProgress(i, partCount, frac); },
+    });
+    // If a segment fails outright, skip it rather than aborting the
+    // whole batch — the other parts still get posted.
+    if (result) parts.push(result);
+  }
+  return parts;
 }

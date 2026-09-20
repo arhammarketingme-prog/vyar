@@ -57,84 +57,44 @@ export async function initCreatePost() {
       el.style.width = "100%";
       el.style.borderRadius = "12px";
       el.style.marginBottom = "8px";
-      if (isVideo) {
-        el.controls = true;
-      }
+      if (isVideo) el.controls = true;
       preview.appendChild(el);
     });
   });
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    errEl.classList.add("hidden");
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Posting...";
-    let createdPostId = null;
+  // Creates one post row, uploads its media, links a product and any
+  // #hashtags in the caption. If the upload fails partway, the post row
+  // is removed again so nothing broken is left behind.
+  async function createAndUploadPost({ caption, postType, mediaFiles, communityId, productId, altText, onProgress }) {
+    const { data: post, error: postErr } = await supabase
+      .from("posts")
+      .insert({ author_id: session.user.id, caption, post_type: postType, community_id: communityId })
+      .select()
+      .single();
+    if (postErr) throw postErr;
 
     try {
-      const caption = form.caption.value.trim();
-      const postType = form.querySelector('input[name="post_type"]:checked')?.value || "post";
-      const files = Array.from(fileInput.files);
-      if (files.length === 0) throw new Error(postType === "reel" ? "Add a video." : "Add at least one photo.");
-      if (postType === "post" && files.length > 10) throw new Error("Max 10 items per post.");
-      if (postType === "reel" && files.length > 1) throw new Error("A Reel is a single video.");
-      if (postType === "reel" && !files[0].type.startsWith("video")) throw new Error("Reels must be a video file.");
-
-      if (postType === "reel") {
-        const { autoCropTo9x16 } = await import("./video-crop.js");
-        files[0] = await autoCropTo9x16(files[0], {
-          onProgress: (frac) => { submitBtn.textContent = `Preparing video... ${Math.round(frac * 100)}%`; },
-        });
-        submitBtn.textContent = "Posting...";
-
-        const MAX_BYTES = 45 * 1024 * 1024; // stay safely under Supabase's 50MB limit
-        if (files[0].size > MAX_BYTES) {
-          const maxSeconds = Math.floor((42 * 1024 * 1024 * 8) / (400_000 + 128_000));
-          throw new Error(
-            `Video is still ${(files[0].size / (1024 * 1024)).toFixed(1)}MB even after compression. ` +
-            `Please trim it to under ${maxSeconds} seconds (about ${Math.floor(maxSeconds / 60)} min ${maxSeconds % 60} sec) and try again.`
-          );
-        }
-      }
-
-      // 1. Create the post row first so we have an id for the storage path.
-      const { data: post, error: postErr } = await supabase
-        .from("posts")
-        .insert({ author_id: session.user.id, caption, post_type: postType, community_id: communitySelect.value || null })
-        .select()
-        .single();
-      if (postErr) throw postErr;
-      createdPostId = post.id;
-
-      // 2. Upload each file, then record it in post_media.
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (let i = 0; i < mediaFiles.length; i++) {
+        const file = mediaFiles[i];
         const ext = file.name.split(".").pop();
         const path = `${session.user.id}/${post.id}/${i}.${ext}`;
 
-        submitBtn.textContent = files.length > 1 ? `Uploading ${i + 1}/${files.length}... 0%` : "Uploading... 0%";
-        await uploadWithProgress("post-media", path, file, session.access_token, (frac) => {
-          const pct = Math.round(frac * 100);
-          submitBtn.textContent = files.length > 1 ? `Uploading ${i + 1}/${files.length}... ${pct}%` : `Uploading... ${pct}%`;
-        });
+        await uploadWithProgress("post-media", path, file, session.access_token, onProgress || (() => {}));
 
         const { error: mediaErr } = await supabase.from("post_media").insert({
           post_id: post.id,
           storage_path: path,
           media_type: file.type.startsWith("video") ? "video" : "image",
           position: i,
-          alt_text: i === 0 ? form.alt_text.value.trim() : null,
+          alt_text: i === 0 ? altText : null,
         });
         if (mediaErr) throw mediaErr;
       }
 
-      // 3. Tag a product, if one was selected.
-      if (productSelect.value) {
-        await supabase.from("post_products").insert({ post_id: post.id, product_id: productSelect.value });
+      if (productId) {
+        await supabase.from("post_products").insert({ post_id: post.id, product_id: productId });
       }
 
-      // 4. Extract #hashtags from the caption and link them.
       const tags = [...caption.matchAll(/#(\w+)/g)].map((m) => m[1].toLowerCase());
       for (const tag of tags) {
         const { data: hashtag, error: tagErr } = await supabase
@@ -147,16 +107,79 @@ export async function initCreatePost() {
         }
       }
 
+      return post.id;
+    } catch (err) {
+      await supabase.from("posts").delete().eq("id", post.id);
+      throw err;
+    }
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errEl.classList.add("hidden");
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Posting...";
+
+    const caption = form.caption.value.trim();
+    const postType = form.querySelector('input[name="post_type"]:checked')?.value || "post";
+    const files = Array.from(fileInput.files);
+    const communityId = communitySelect.value || null;
+    const productId = productSelect.value || null;
+
+    try {
+      if (files.length === 0) throw new Error(postType === "reel" ? "Add a video." : "Add at least one photo.");
+      if (postType === "post" && files.length > 10) throw new Error("Max 10 items per post.");
+      if (postType === "reel" && files.length > 1) throw new Error("A Reel is a single video.");
+      if (postType === "reel" && !files[0].type.startsWith("video")) throw new Error("Reels must be a video file.");
+
+      if (postType === "reel") {
+        // Reels are capped at 60 seconds. A longer upload is automatically
+        // split into consecutive 60-second parts, each posted separately.
+        const { splitReelInto1MinParts } = await import("./video-crop.js");
+        const parts = await splitReelInto1MinParts(files[0], {
+          onProgress: (partIndex, partCount, frac) => {
+            const label = partCount > 1 ? `Part ${partIndex + 1}/${partCount}` : "Preparing video";
+            submitBtn.textContent = `${label}... ${Math.round(frac * 100)}%`;
+          },
+        });
+        if (parts.length === 0) throw new Error("Couldn't process this video — please try a different file.");
+
+        for (let p = 0; p < parts.length; p++) {
+          const partCaption = parts.length > 1 ? `${caption} (Part ${p + 1}/${parts.length})`.trim() : caption;
+          submitBtn.textContent = parts.length > 1 ? `Uploading part ${p + 1}/${parts.length}... 0%` : "Uploading... 0%";
+          await createAndUploadPost({
+            caption: partCaption,
+            postType: "reel",
+            mediaFiles: [parts[p]],
+            communityId,
+            productId,
+            altText: null,
+            onProgress: (frac) => {
+              const pct = Math.round(frac * 100);
+              submitBtn.textContent = parts.length > 1
+                ? `Uploading part ${p + 1}/${parts.length}... ${pct}%`
+                : `Uploading... ${pct}%`;
+            },
+          });
+        }
+      } else {
+        submitBtn.textContent = "Uploading... 0%";
+        await createAndUploadPost({
+          caption,
+          postType: "post",
+          mediaFiles: files,
+          communityId,
+          productId,
+          altText: form.alt_text.value.trim(),
+          onProgress: (frac) => { submitBtn.textContent = `Uploading... ${Math.round(frac * 100)}%`; },
+        });
+      }
+
       window.location.href = postType === "reel" ? "reels.html" : "feed.html";
     } catch (err) {
-      // If the post row was created but the media never finished
-      // uploading, don't leave a broken/empty post behind — clean it
-      // up so the feed and reels list never show blank cards.
-      if (createdPostId) {
-        await supabase.from("posts").delete().eq("id", createdPostId);
-      }
       showError(errEl, err);
-      alert("Post failed: " + (err?.message || "Unknown error") + "\n\nNothing was posted — please try again.");
+      alert("Post failed: " + (err?.message || "Unknown error") + "\n\nPlease try again.");
       submitBtn.disabled = false;
       submitBtn.textContent = "Share";
     }
