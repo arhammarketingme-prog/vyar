@@ -52,8 +52,8 @@ function renderProfile(profile, isOwnProfile, session) {
       ` : ""}
       <div style="display:flex; justify-content:center; gap:24px; margin:12px 0;">
         <div><strong>${profile.posts_count}</strong><div class="muted">${t("posts")}</div></div>
-        <div><strong>${profile.followers_count}</strong><div class="muted">${t("followers")}</div></div>
-        <div><strong>${profile.following_count}</strong><div class="muted">${t("following_count")}</div></div>
+        <a href="follow-list.html?u=${encodeURIComponent(profile.username)}&type=followers" style="text-decoration:none; color:inherit;"><strong>${profile.followers_count}</strong><div class="muted">${t("followers")}</div></a>
+        <a href="follow-list.html?u=${encodeURIComponent(profile.username)}&type=following" style="text-decoration:none; color:inherit;"><strong>${profile.following_count}</strong><div class="muted">${t("following_count")}</div></a>
       </div>
       <div id="follow-slot"></div>
       ${isOwnProfile ? `
