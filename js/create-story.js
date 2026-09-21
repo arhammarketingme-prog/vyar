@@ -285,6 +285,7 @@ async function handleSubmit(e) {
         author_id: session.user.id,
         media_type: "image",
         storage_path: path,
+        visibility: document.getElementById("story-visibility")?.value === "close_friends" ? "close_friends" : "public",
         tip_sticker_x: tipSticker?.x ?? null,
         tip_sticker_y: tipSticker?.y ?? null,
       })

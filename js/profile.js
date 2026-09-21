@@ -19,6 +19,7 @@ export async function initProfile() {
   }
 
   const isOwnProfile = profile.id === session.user.id;
+  const showArchived = isOwnProfile && params.get("archived") === "1";
   renderProfile(profile, isOwnProfile, session);
   if (!isOwnProfile) {
     await renderFollowButton(profile, session);
@@ -31,7 +32,7 @@ export async function initProfile() {
     msgLink.textContent = `💬 ${t("message_btn")}`;
     slot.appendChild(msgLink);
   }
-  await renderPostsGrid(profile.id);
+  await renderPostsGrid(profile.id, showArchived);
   await initHighlightsBar(profile.id, isOwnProfile);
 }
 
@@ -66,6 +67,8 @@ function renderProfile(profile, isOwnProfile, session) {
           <a href="products.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🛍️ Products</a>
           <a href="analytics.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📈 Analytics</a>
           <a href="security.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🔒 Security</a>
+          <a href="profile.html?archived=1" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📦 Archived</a>
+          <a href="close-friends.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">💚 Close Friends</a>
         </div>
       ` : ""}
       ${isOwnProfile ? `<button class="btn btn-secondary" id="logout-btn">${t("log_out")}</button>` : ""}
@@ -202,16 +205,24 @@ async function renderTipButton(profile, session) {
   });
 }
 
-async function renderPostsGrid(authorId) {
+async function renderPostsGrid(authorId, showArchived = false) {
   const { data: posts, error } = await supabase
     .from("posts")
     .select("id, post_type, post_media(storage_path, position, media_type)")
     .eq("author_id", authorId)
+    .eq("is_archived", showArchived)
     .order("created_at", { ascending: false });
 
   if (error || !posts) return;
 
   const grid = document.getElementById("posts-grid");
+  if (showArchived) {
+    const heading = document.createElement("div");
+    heading.className = "muted";
+    heading.style.cssText = "grid-column:1 / -1; padding:6px 0;";
+    heading.textContent = posts.length === 0 ? "No archived posts." : "Archived posts — only visible to you.";
+    grid.parentNode.insertBefore(heading, grid);
+  }
   posts.forEach((post) => {
     const media = (post.post_media || []).sort((a, b) => a.position - b.position)[0];
     if (!media) return;

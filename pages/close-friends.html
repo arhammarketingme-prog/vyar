@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#f0a83a">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<title>Close Friends — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="container">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <a href="profile.html" style="font-size:20px;">←</a>
+      <h3 style="margin:0; color:var(--vyra-accent);">💚 Close Friends</h3>
+    </div>
+    <p class="muted" style="margin-top:0;">People on this list can see stories you mark as "Close Friends only". Only you can see this list.</p>
+    <div id="close-friends-root"><p class="muted">Loading…</p></div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initCloseFriends } from "../js/close-friends.js";
+    initCloseFriends();
+  </script>
+</body>
+</html>

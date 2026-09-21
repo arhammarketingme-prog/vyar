@@ -13,7 +13,7 @@ export async function initPostDetail() {
   const { data: post, error } = await supabase
     .from("posts")
     .select(`
-      id, caption, created_at,
+      id, caption, created_at, is_archived,
       author:profiles!posts_author_id_fkey ( id, username, avatar_url, is_verified ),
       post_media ( storage_path, position, media_type ),
       post_products ( product:products ( id, name, price_inr, image_storage_path, external_url ) )
@@ -95,12 +95,16 @@ function renderPost(post, session) {
         <strong>${escapeHtml(post.author.username)}${verifiedBadge(post.author.is_verified)}</strong>
         <span class="muted" style="margin-left:8px;">· ${timeAgo(post.created_at)}</span>
         <div style="margin-left:auto; display:flex; gap:8px;">
-          ${isOwner ? `<button id="delete-post-btn" class="muted" style="background:none; border:none; cursor:pointer;">🗑️ Delete</button>` : `<button id="report-post-btn" class="muted" style="background:none; border:none; cursor:pointer;">🚩 Report</button>`}
+          ${isOwner ? `
+            <button id="edit-post-btn" class="muted" style="background:none; border:none; cursor:pointer;">✏️ Edit</button>
+            <button id="archive-post-btn" class="muted" style="background:none; border:none; cursor:pointer;">${post.is_archived ? "📤 Unarchive" : "📦 Archive"}</button>
+            <button id="delete-post-btn" class="muted" style="background:none; border:none; cursor:pointer;">🗑️ Delete</button>
+          ` : `<button id="report-post-btn" class="muted" style="background:none; border:none; cursor:pointer;">🚩 Report</button>`}
         </div>
       </div>
       <div style="display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:4px;">${items}</div>
       ${dots}
-      <p>${linkifyCaption(post.caption || "")}</p>
+      <p id="post-caption">${linkifyCaption(post.caption || "")}</p>
       <div id="collection-picker-slot"></div>
     </div>
   `;
@@ -110,6 +114,34 @@ function renderPost(post, session) {
       if (!confirm("Delete this post? This can't be undone.")) return;
       const { error } = await supabase.from("posts").delete().eq("id", post.id);
       if (!error) window.location.href = "profile.html";
+    });
+
+    document.getElementById("edit-post-btn").addEventListener("click", async () => {
+      const newCaption = prompt("Edit caption", post.caption || "");
+      if (newCaption === null) return; // cancelled
+      const { error } = await supabase.from("posts").update({ caption: newCaption }).eq("id", post.id);
+      if (!error) {
+        post.caption = newCaption;
+        document.getElementById("post-caption").innerHTML = linkifyCaption(newCaption || "");
+      } else {
+        alert("Couldn't update the caption — please try again.");
+      }
+    });
+
+    document.getElementById("archive-post-btn").addEventListener("click", async () => {
+      const nowArchiving = !post.is_archived;
+      const msg = nowArchiving
+        ? "Archive this post? It'll disappear from your profile and feeds for everyone but you — you can unarchive it any time."
+        : "Unarchive this post? It'll become visible to others again.";
+      if (!confirm(msg)) return;
+      const { error } = await supabase.from("posts").update({ is_archived: nowArchiving }).eq("id", post.id);
+      if (!error) {
+        post.is_archived = nowArchiving;
+        const btn = document.getElementById("archive-post-btn");
+        btn.textContent = nowArchiving ? "📤 Unarchive" : "📦 Archive";
+      } else {
+        alert("Couldn't update this post — please try again.");
+      }
     });
   } else {
     document.getElementById("report-post-btn").addEventListener("click", async () => {

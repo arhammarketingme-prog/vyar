@@ -19,7 +19,7 @@ export async function initStoryView() {
 
   const { data, error } = await supabase
     .from("stories")
-    .select("id, media_type, storage_path, text_content, background_color, created_at, tip_sticker_x, tip_sticker_y")
+    .select("id, media_type, storage_path, text_content, background_color, created_at, tip_sticker_x, tip_sticker_y, visibility")
     .eq("author_id", profile.id)
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: true });
@@ -89,7 +89,7 @@ async function renderStory(profile) {
     <div class="story-progress-row">${progressBars}</div>
     <div class="story-header">
       <img class="avatar" width="36" height="36" src="${profile.avatar_url || phAvatar(32, profile.display_name || profile.username)}" alt="">
-      <strong>${escapeHtml(profile.username)}</strong>
+      <strong>${escapeHtml(profile.username)}</strong>${story.visibility === "close_friends" ? ` <span style="color:#2fa89a; font-size:11px;">💚 Close Friends</span>` : ""}
     </div>
     ${mediaHtml}
     ${story.text_content ? `<div class="story-text">${escapeHtml(story.text_content)}</div>` : ""}
