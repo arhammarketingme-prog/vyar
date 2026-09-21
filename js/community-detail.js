@@ -52,7 +52,7 @@ export async function initCommunityDetail() {
       return `
         <a href="post.html?id=${post.id}" class="post card" style="display:block;">
           <div class="post-header">
-            <img class="avatar" width="36" height="36" src="${post.author.avatar_url || phAvatar(40)}" alt="">
+            <img class="avatar" width="36" height="36" src="${post.author.avatar_url || phAvatar(40, post.author.display_name || post.author.username)}" alt="">
             <strong>${escapeHtml(post.author.username)}</strong>
           </div>
           ${url ? `<img src="${url}" style="width:100%; border-radius:12px;">` : ""}

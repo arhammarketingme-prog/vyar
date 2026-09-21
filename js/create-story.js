@@ -3,7 +3,7 @@ import { supabase, requireAuth, showError } from "./supabaseClient.js";
 let canvas, ctx;
 let baseImage = null;       // Image object, or null for a pure color/text background
 let currentFilter = "none";
-let backgroundColor = "#ff5d3b";
+let backgroundColor = "#f0a83a";
 let textItems = [];          // {text, x, y, color}
 let stickerItems = [];       // {emoji, x, y}
 let drawPaths = [];          // {points:[{x,y}], color}

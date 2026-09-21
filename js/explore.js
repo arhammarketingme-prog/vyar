@@ -29,7 +29,7 @@ async function loadSuggestedAccounts(session) {
     .map(
       (p) => `
       <a href="profile.html?u=${encodeURIComponent(p.username)}" style="text-align:center; flex-shrink:0; width:80px;">
-        <img width="56" height="56" src="${p.avatar_url || phAvatar(56)}" style="width:56px; height:56px; border-radius:50%; object-fit:cover;">
+        <img width="56" height="56" src="${p.avatar_url || phAvatar(56, p.display_name || p.username)}" style="width:56px; height:56px; border-radius:50%; object-fit:cover;">
         <div style="font-size:12px; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.username)}</div>
       </a>`
     )

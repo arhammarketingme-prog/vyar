@@ -57,13 +57,15 @@ export function showError(el, err) {
   el.classList.remove("hidden");
 }
 
-// A gray circle placeholder built entirely in code (data URI) — no
-// network request at all, so it never fails to load even on very slow
-// or spotty connections (unlike fetching a placeholder from a third
-// party service).
-export function phAvatar(size = 40) {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'><rect width='100%' height='100%' rx='${size / 2}' fill='%237c5cff'/></svg>`;
-  return `data:image/svg+xml,${svg}`;
+// A default avatar built entirely in code (data URI, no network request,
+// so it never fails to load) — shows the person's first initial on the
+// brand gradient, the way Gmail/Slack show initials when there's no
+// uploaded photo, instead of a blank colored circle.
+export function phAvatar(size = 40, name = "") {
+  const initial = (name || "").trim().charAt(0).toUpperCase() || "?";
+  const fontSize = Math.round(size * 0.45);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0a83a"/><stop offset="1" stop-color="#d9536f"/></linearGradient></defs><rect width="100%" height="100%" rx="${size / 2}" fill="url(#g)"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" font-family="Manrope, sans-serif" font-weight="700" font-size="${fontSize}" fill="#ffffff">${initial}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 // Relative time, Instagram-style: "2h", "3d", "1w" instead of a full date.

@@ -84,11 +84,11 @@ async function renderStory(profile) {
     mediaHtml = `<img src="${url}" style="width:100%; height:100%; object-fit:cover;">`;
   }
 
-  root.style.background = story.media_type === "text" ? (story.background_color || "#ff5d3b") : "black";
+  root.style.background = story.media_type === "text" ? (story.background_color || "#f0a83a") : "black";
   content.innerHTML = `
     <div class="story-progress-row">${progressBars}</div>
     <div class="story-header">
-      <img class="avatar" width="36" height="36" src="${profile.avatar_url || phAvatar(32)}" alt="">
+      <img class="avatar" width="36" height="36" src="${profile.avatar_url || phAvatar(32, profile.display_name || profile.username)}" alt="">
       <strong>${escapeHtml(profile.username)}</strong>
     </div>
     ${mediaHtml}

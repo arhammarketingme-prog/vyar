@@ -122,7 +122,7 @@ export async function initHighlightView() {
 
   function render() {
     const s = stories[index];
-    root.style.background = s.media_type === "text" ? s.background_color || "#ff5d3b" : "black";
+    root.style.background = s.media_type === "text" ? s.background_color || "#f0a83a" : "black";
     const mediaHtml =
       s.media_type === "image" && s.storage_path
         ? `<img src="${supabase.storage.from("post-media").getPublicUrl(s.storage_path).data.publicUrl}" style="width:100%; height:100%; object-fit:cover;">`

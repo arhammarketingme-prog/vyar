@@ -36,7 +36,7 @@ export async function initMessagesInbox() {
     .map(
       ([partnerId, info]) => `
       <a href="chat.html?u=${partnerId}" class="search-result-row">
-        <img class="avatar" width="36" height="36" src="${info.partner.avatar_url || phAvatar(40)}" alt="">
+        <img class="avatar" width="36" height="36" src="${info.partner.avatar_url || phAvatar(40, info.partner.display_name || info.partner.username)}" alt="">
         <div>
           <strong>${escapeHtml(info.partner.username)}</strong>
           <div class="muted">${escapeHtml(info.lastMessage.slice(0, 40))}</div>

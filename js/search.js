@@ -70,7 +70,7 @@ function renderUsers(users, el) {
     .map(
       (u) => `
       <a href="profile.html?u=${encodeURIComponent(u.username)}" class="search-result-row">
-        <img class="avatar" width="36" height="36" src="${u.avatar_url || phAvatar(40)}" alt="">
+        <img class="avatar" width="36" height="36" src="${u.avatar_url || phAvatar(40, u.display_name || u.username)}" alt="">
         <div>
           <strong>${escapeHtml(u.username)}</strong>
           <div class="muted">${escapeHtml(u.display_name || "")} · ${u.followers_count} followers</div>
@@ -105,7 +105,7 @@ function renderBusinesses(businesses, el) {
     .map(
       (b) => `
       <a href="profile.html?u=${encodeURIComponent(b.username)}" class="search-result-row">
-        <img class="avatar" width="36" height="36" src="${b.avatar_url || phAvatar(40)}" alt="">
+        <img class="avatar" width="36" height="36" src="${b.avatar_url || phAvatar(40, b.display_name || b.username)}" alt="">
         <div>
           <strong>${escapeHtml(b.display_name || b.username)}</strong>
           <div class="muted">${escapeHtml(b.business_category || "")}${b.location ? " · " + escapeHtml(b.location) : ""}</div>

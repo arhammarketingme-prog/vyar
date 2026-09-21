@@ -34,7 +34,7 @@ export async function initNotifications() {
       const link = n.type === "follow" || n.type === "follow_request" ? `profile.html?u=${n.actor.username}` : n.post_id ? `post.html?id=${n.post_id}` : "#";
       return `
       <a href="${link}" class="search-result-row" style="${n.read_at ? "" : "background:rgba(255,93,59,0.08);"}">
-        <img class="avatar" width="36" height="36" src="${n.actor?.avatar_url || phAvatar(40)}" alt="">
+        <img class="avatar" width="36" height="36" src="${n.actor?.avatar_url || phAvatar(40, n.actor?.display_name || n.actor?.username)}" alt="">
         <div>
           <strong>${escapeHtml(n.actor?.username || "Someone")}</strong> ${labels[n.type] || n.type}
           <div class="muted">${new Date(n.created_at).toLocaleString()}</div>

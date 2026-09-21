@@ -91,7 +91,7 @@ function renderPost(post, session) {
   document.getElementById("post-root").innerHTML = `
     <div class="card">
       <div class="post-header">
-        <img class="avatar" width="36" height="36" src="${post.author.avatar_url || phAvatar(40)}" alt="">
+        <img class="avatar" width="36" height="36" src="${post.author.avatar_url || phAvatar(40, post.author.display_name || post.author.username)}" alt="">
         <strong>${escapeHtml(post.author.username)}${verifiedBadge(post.author.is_verified)}</strong>
         <span class="muted" style="margin-left:8px;">· ${timeAgo(post.created_at)}</span>
         <div style="margin-left:auto; display:flex; gap:8px;">

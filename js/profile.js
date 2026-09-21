@@ -39,7 +39,7 @@ function renderProfile(profile, isOwnProfile, session) {
   const root = document.getElementById("profile-root");
   root.innerHTML = `
     <div class="card" style="text-align:center;">
-      <img class="avatar" width="80" height="80" style="width:80px;height:80px;" src="${profile.avatar_url || phAvatar(80)}" alt="">
+      <img class="avatar" width="80" height="80" style="width:80px;height:80px;" src="${profile.avatar_url || phAvatar(80, profile.display_name || profile.username)}" alt="">
       <h2>${escapeHtml(profile.display_name || profile.username)}${verifiedBadge(profile.is_verified)}</h2>
       <div class="muted">@${escapeHtml(profile.username)}</div>
       <p>${escapeHtml(profile.bio || "")}</p>
