@@ -41,6 +41,13 @@
         <input type="text" name="website" placeholder="Website">
         <input type="text" name="location" placeholder="Location">
 
+        <div class="card" style="background:var(--vyra-bg); margin-bottom:12px;">
+          <div class="muted" style="margin-bottom:6px;">📍 Nearby discovery</div>
+          <div id="location-status" class="muted" style="margin-bottom:8px; font-size:12.5px;">Not shared — you won't show up in "Nearby".</div>
+          <button type="button" id="share-location-btn" class="btn btn-secondary">Share my location</button>
+        </div>
+
+
         <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
           <input type="checkbox" name="is_business" style="width:auto; margin:0;"> Business account
         </label>

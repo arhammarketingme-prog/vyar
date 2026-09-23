@@ -3,10 +3,46 @@ import { supabase, requireAuth, phAvatar } from "./supabaseClient.js";
 export async function initExplore() {
   const session = await requireAuth();
   if (!session) return;
+  await loadNearbyPeople();
   await loadTrendingHashtags();
   await loadSuggestedAccounts(session);
   await loadPopularReels();
   await loadExploreGrid();
+}
+
+async function loadNearbyPeople() {
+  const el = document.getElementById("nearby-people");
+  if (!("geolocation" in navigator)) {
+    el.innerHTML = `<p class="muted">Your browser doesn't support location.</p>`;
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const { data, error } = await supabase.rpc("nearby_profiles", {
+        viewer_lat: pos.coords.latitude,
+        viewer_lng: pos.coords.longitude,
+        radius_km: 25,
+        max_results: 20,
+      });
+      if (error || !data || data.length === 0) {
+        el.innerHTML = `<p class="muted">No one nearby has shared their location yet.</p>`;
+        return;
+      }
+      el.innerHTML = data
+        .map((p) => {
+          const name = p.display_name || p.username;
+          return `
+            <a href="profile.html?u=${encodeURIComponent(p.username)}" style="text-align:center; flex-shrink:0; width:84px; text-decoration:none; color:inherit;">
+              <img src="${p.avatar_url || phAvatar(56, name)}" width="56" height="56" style="border-radius:50%; object-fit:cover;" alt="">
+              <div style="font-size:12px; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.username)}</div>
+              <div class="muted" style="font-size:10.5px;">${p.distance_km.toFixed(1)} km</div>
+            </a>`;
+        })
+        .join("");
+    },
+    () => { el.innerHTML = `<p class="muted">Share your location (in Edit Profile) to see who's nearby.</p>`; },
+    { enableHighAccuracy: false, timeout: 10000 }
+  );
 }
 
 async function loadSuggestedAccounts(session) {

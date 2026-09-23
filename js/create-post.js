@@ -1,4 +1,5 @@
 import { supabase, requireAuth, showError, uploadWithProgress } from "./supabaseClient.js";
+import { getLang } from "./i18n.js";
 
 export async function initCreatePost() {
   const session = await requireAuth();
@@ -60,6 +61,28 @@ export async function initCreatePost() {
       if (isVideo) el.controls = true;
       preview.appendChild(el);
     });
+  });
+
+  document.getElementById("ai-caption-btn").addEventListener("click", async () => {
+    const btn = document.getElementById("ai-caption-btn");
+    const description = prompt("Briefly describe what's in this post — helps write a better caption:", form.caption.value || "");
+    if (description === null) return;
+    btn.disabled = true;
+    btn.textContent = "✨ Thinking...";
+    try {
+      const langNames = { en: "English", mr: "Marathi", hi: "Hindi", gu: "Gujarati", bn: "Bengali", pa: "Punjabi", ta: "Tamil", te: "Telugu", kn: "Kannada", ml: "Malayalam", or: "Odia", as: "Assamese" };
+      const { data, error } = await supabase.functions.invoke("ai-caption", {
+        body: { description, language: langNames[getLang()] || "English" },
+      });
+      if (error || data?.error) throw new Error(data?.error || error?.message || "AI caption failed");
+      const tags = (data.hashtags || []).map((t) => `#${t}`).join(" ");
+      form.caption.value = tags ? `${data.caption}\n\n${tags}` : data.caption;
+    } catch (err) {
+      alert(err.message || "Couldn't generate a caption — please try again.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "✨ Suggest a caption";
+    }
   });
 
   // Creates one post row, uploads its media, links a product and any

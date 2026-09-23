@@ -7,13 +7,42 @@ export async function initEditProfile() {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("display_name, bio, website, location, upi_id, is_private, account_type, business_category, business_hours, contact_phone, avatar_url, preferred_language")
+    .select("display_name, bio, website, location, upi_id, is_private, account_type, business_category, business_hours, contact_phone, avatar_url, preferred_language, latitude, longitude, location_updated_at")
     .eq("id", session.user.id)
     .single();
 
   if (error || !profile) return;
 
   document.getElementById("language-select").value = profile.preferred_language || getLang();
+
+  const locStatus = document.getElementById("location-status");
+  if (profile.latitude != null && profile.longitude != null) {
+    locStatus.textContent = "✅ Location shared — you'll show up in \"Nearby\".";
+  }
+  document.getElementById("share-location-btn").addEventListener("click", () => {
+    if (!("geolocation" in navigator)) {
+      locStatus.textContent = "Your browser doesn't support location sharing.";
+      return;
+    }
+    locStatus.textContent = "Getting your location…";
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { error: locErr } = await supabase
+          .from("profiles")
+          .update({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            location_updated_at: new Date().toISOString(),
+          })
+          .eq("id", session.user.id);
+        locStatus.textContent = locErr
+          ? "Couldn't save your location — please try again."
+          : "✅ Location shared — you'll show up in \"Nearby\".";
+      },
+      () => { locStatus.textContent = "Location permission denied."; },
+      { enableHighAccuracy: false, timeout: 10000 }
+    );
+  });
 
   const form = document.getElementById("edit-profile-form");
   const avatarInput = document.getElementById("avatar-input");
