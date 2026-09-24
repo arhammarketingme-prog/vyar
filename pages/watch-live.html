@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#f0a83a">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<title>Live — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body { background:#000; }
+  #remote-video { width:100%; min-height:100vh; object-fit:contain; background:#000; }
+  #live-overlay { position:fixed; top:0; left:0; right:0; padding:16px; display:flex; align-items:center; gap:10px; background:linear-gradient(180deg, rgba(0,0,0,0.7), transparent); }
+  #live-badge { background:var(--vyra-rose); color:white; font-size:11px; font-weight:800; padding:3px 8px; border-radius:6px; }
+</style>
+</head>
+<body>
+  <div id="live-overlay">
+    <a href="explore.html" style="color:white; font-size:20px; text-decoration:none;">←</a>
+    <span id="live-badge">● LIVE</span>
+    <strong id="host-name" style="color:white;"></strong>
+    <span class="muted" id="viewer-count" style="color:#ccc; margin-left:auto;"></span>
+  </div>
+  <video id="remote-video" autoplay playsinline></video>
+  <p id="live-status" class="muted" style="text-align:center; margin-top:40vh; color:white;">Connecting…</p>
+
+  <script type="module">
+    import { initWatchLive } from "../js/watch-live.js";
+    initWatchLive();
+  </script>
+</body>
+</html>

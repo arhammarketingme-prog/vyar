@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#f0a83a">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+<title>Go Live — VYRA</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  #local-video { width:100%; border-radius:16px; background:#000; aspect-ratio:9/16; object-fit:cover; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+      <a href="profile.html" style="font-size:20px;">←</a>
+      <h3 style="margin:0;">🔴 Go Live</h3>
+    </div>
+
+    <div id="pre-live">
+      <input type="text" id="stream-title" placeholder="What's this stream about?">
+      <button id="start-live-btn" class="btn">Start Live Stream</button>
+      <div id="live-error" class="error hidden"></div>
+    </div>
+
+    <div id="in-live" class="hidden">
+      <video id="local-video" autoplay muted playsinline></video>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+        <div class="muted"><span id="viewer-count">0</span> watching</div>
+        <button id="end-live-btn" class="btn" style="width:auto; background:var(--vyra-rose); color:white;">End Stream</button>
+      </div>
+    </div>
+  </div>
+  <nav class="bottom-nav">
+    <a href="feed.html">🏠</a>
+    <a href="explore.html">🔍</a>
+    <a href="create-post.html">➕</a>
+    <a href="profile.html">👤</a>
+  </nav>
+  <script type="module">
+    import { initGoLive } from "../js/go-live.js";
+    initGoLive();
+  </script>
+</body>
+</html>

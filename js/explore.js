@@ -3,11 +3,36 @@ import { supabase, requireAuth, phAvatar } from "./supabaseClient.js";
 export async function initExplore() {
   const session = await requireAuth();
   if (!session) return;
+  await loadLiveNow();
   await loadNearbyPeople();
   await loadTrendingHashtags();
   await loadSuggestedAccounts(session);
   await loadPopularReels();
   await loadExploreGrid();
+}
+
+async function loadLiveNow() {
+  const { data, error } = await supabase
+    .from("live_streams")
+    .select("room_name, title, host:profiles!live_streams_host_id_fkey(username, display_name, avatar_url)")
+    .eq("is_active", true)
+    .order("started_at", { ascending: false });
+
+  if (error || !data || data.length === 0) return;
+
+  document.getElementById("live-now-section").classList.remove("hidden");
+  document.getElementById("live-now-list").innerHTML = data
+    .map((s) => {
+      const name = s.host.display_name || s.host.username;
+      return `
+        <a href="watch-live.html?room=${encodeURIComponent(s.room_name)}" style="text-align:center; flex-shrink:0; width:76px; text-decoration:none; color:inherit;">
+          <div style="width:60px; height:60px; border-radius:50%; padding:2px; background:var(--vyra-rose); margin:0 auto;">
+            <img src="${s.host.avatar_url || phAvatar(56, name)}" width="56" height="56" style="border-radius:50%; object-fit:cover; border:2px solid var(--vyra-bg);" alt="">
+          </div>
+          <div style="font-size:11px; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(s.host.username)}</div>
+        </a>`;
+    })
+    .join("");
 }
 
 async function loadNearbyPeople() {

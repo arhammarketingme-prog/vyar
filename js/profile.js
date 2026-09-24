@@ -66,6 +66,7 @@ function renderProfile(profile, isOwnProfile, session) {
           <a href="ads-dashboard.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📢 Ads</a>
           <a href="products.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🛍️ Products</a>
           <a href="analytics.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📈 Analytics</a>
+          <a href="go-live.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px; color:var(--vyra-rose);">🔴 Go Live</a>
           <a href="security.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🔒 Security</a>
           <a href="profile.html?archived=1" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📦 Archived</a>
           <a href="close-friends.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">💚 Close Friends</a>
