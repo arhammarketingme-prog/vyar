@@ -5,7 +5,6 @@ export async function initGoLive() {
   if (!session) return;
 
   const { data: profile } = await supabase.from("profiles").select("username, display_name").eq("id", session.user.id).single();
-  const roomName = `live-${session.user.id}-${Date.now()}`;
 
   const startBtn = document.getElementById("start-live-btn");
   const endBtn = document.getElementById("end-live-btn");
@@ -22,6 +21,8 @@ export async function initGoLive() {
     errEl.classList.add("hidden");
     startBtn.disabled = true;
     startBtn.textContent = "Starting…";
+
+    const roomName = `live-${session.user.id}-${Date.now()}`;
 
     try {
       const { data: streamRow, error: insertErr } = await supabase
