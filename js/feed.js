@@ -1,4 +1,26 @@
 import { supabase, requireAuth, phAvatar, timeAgo, verifiedBadge } from "./supabaseClient.js";
+import { getLang } from "./i18n.js";
+
+const LANG_NAMES = { en: "English", mr: "Marathi", hi: "Hindi", gu: "Gujarati", bn: "Bengali", pa: "Punjabi", ta: "Tamil", te: "Telugu", kn: "Kannada", ml: "Malayalam", or: "Odia", as: "Assamese" };
+
+async function translateInline(originalText, targetEl, btnEl) {
+  btnEl.disabled = true;
+  btnEl.textContent = "Translating…";
+  try {
+    const { data, error } = await supabase.functions.invoke("translate-text", {
+      body: { text: originalText, targetLanguage: LANG_NAMES[getLang()] || "English" },
+    });
+    if (error || data?.error) throw new Error(data?.error || error?.message);
+    targetEl.textContent = data.translated;
+    btnEl.textContent = "Show original";
+    btnEl.dataset.translated = "1";
+  } catch (err) {
+    btnEl.textContent = "🌐 Translate";
+    alert(err.message || "Couldn't translate — please try again.");
+  } finally {
+    btnEl.disabled = false;
+  }
+}
 
 const PAGE_SIZE = 10;
 let cursor = null;   // created_at of the last loaded post, for pagination
@@ -11,9 +33,21 @@ const impressedCampaigns = new Set(); // avoid double-logging the same campaign 
 
 let mutedUserIds = new Set();
 
+export function setFeedSubtitle(mode) {
+  const el = document.getElementById("feed-subtitle");
+  if (!el) return;
+  const text = {
+    foryou: "Newest posts, in order — no algorithm, nothing hidden.",
+    following: "Only people you follow, newest first.",
+    recommended: "Ranked by likes/comments/saves + recency — tap \"Why this?\" on any post to see the exact numbers.",
+  }[mode];
+  el.textContent = text || "";
+}
+
 export async function initFeed() {
   session = await requireAuth();
   if (!session) return;
+  setFeedSubtitle("foryou");
   const { data: mutes } = await supabase.from("mutes").select("muted_id").eq("muter_id", session.user.id);
   mutedUserIds = new Set((mutes || []).map((m) => m.muted_id));
   await loadActiveCampaigns();
@@ -140,6 +174,7 @@ async function logAdClick(campaignId) {
 }
 
 export async function loadFollowing() {
+  setFeedSubtitle("following");
   const { data: follows } = await supabase.from("follows").select("following_id").eq("follower_id", session.user.id).eq("status", "accepted");
   const followingIds = (follows || []).map((f) => f.following_id);
 
@@ -170,6 +205,7 @@ export async function loadFollowing() {
 }
 
 export async function loadRecommended() {
+  setFeedSubtitle("recommended");
   // A real, simple heuristic — NOT a machine-learning recommender.
   // Score = engagement (weighted) with a recency decay, computed here
   // in JS from the last 100 posts. Good enough for a small/medium
@@ -197,10 +233,14 @@ export async function loadRecommended() {
   });
 
   scored.sort((a, b) => b.score - a.score);
-  scored.slice(0, 20).forEach((s) => renderPost(s.post));
+  scored.slice(0, 20).forEach((s) => {
+    const ageHours = Math.round((now - new Date(s.post.created_at).getTime()) / 3600000);
+    const why = `Shown because: ${s.post.like_count} likes, ${s.post.comment_count} comments, ${s.post.save_count} saves, posted ${ageHours}h ago.\n\nFormula (same for every post, no hidden personalization): (likes×2 + comments×3 + saves×4) ÷ (hours old + 2)^1.3 = ${s.score.toFixed(2)}`;
+    renderPost(s.post, why);
+  });
 }
 
-function renderPost(post) {
+function renderPost(post, whyShown) {
   const feedEl = document.getElementById("feed");
   const mediaList = (post.post_media || []).sort((a, b) => a.position - b.position);
   const likedByMe = (post.likes || []).some((l) => l.user_id === session.user.id);
@@ -225,9 +265,30 @@ function renderPost(post) {
       <button data-action="save" class="${savedByMe ? "active" : ""}">${savedByMe ? "🔖" : "📑"}</button>
     </div>
     <div class="muted"><span class="like-count">${post.like_count}</span> likes</div>
-    <div>${linkifyCaption(post.caption || "")}</div>
+    <div class="post-caption-text">${linkifyCaption(post.caption || "")}</div>
+    ${post.caption ? `<button type="button" class="translate-btn muted" style="background:none; border:none; padding:0; margin-top:2px; font-size:11.5px; text-decoration:underline; cursor:pointer;">🌐 Translate</button>` : ""}
     <a href="post.html?id=${post.id}" class="muted comment-count" style="display:block; margin-top:4px;">View all ${post.comment_count} comments</a>
+    ${whyShown ? `<button type="button" class="why-shown-btn muted" style="background:none; border:none; padding:0; margin-top:4px; font-size:11.5px; text-decoration:underline; cursor:pointer;">ⓘ Why this?</button>` : ""}
   `;
+
+  if (whyShown) {
+    el.querySelector(".why-shown-btn").addEventListener("click", () => alert(whyShown));
+  }
+
+  const translateBtn = el.querySelector(".translate-btn");
+  if (translateBtn) {
+    const captionEl = el.querySelector(".post-caption-text");
+    const originalHtml = captionEl.innerHTML;
+    translateBtn.addEventListener("click", () => {
+      if (translateBtn.dataset.translated === "1") {
+        captionEl.innerHTML = originalHtml;
+        translateBtn.textContent = "🌐 Translate";
+        translateBtn.dataset.translated = "0";
+      } else {
+        translateInline(post.caption, captionEl, translateBtn);
+      }
+    });
+  }
 
   const likeBtn = el.querySelector('[data-action="like"]');
   const mediaEl = el.querySelector(".post-media");

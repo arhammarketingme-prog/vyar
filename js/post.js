@@ -1,7 +1,30 @@
 import { supabase, requireAuth, showError, phAvatar, timeAgo, verifiedBadge } from "./supabaseClient.js";
+import { getLang } from "./i18n.js";
 
 let postAuthorId = null;
 let currentSort = "newest";
+
+const LANG_NAMES = { en: "English", mr: "Marathi", hi: "Hindi", gu: "Gujarati", bn: "Bengali", pa: "Punjabi", ta: "Tamil", te: "Telugu", kn: "Kannada", ml: "Malayalam", or: "Odia", as: "Assamese" };
+
+async function translateCommentInline(originalText, targetEl, btnEl) {
+  btnEl.disabled = true;
+  const prevLabel = btnEl.textContent;
+  btnEl.textContent = "…";
+  try {
+    const { data, error } = await supabase.functions.invoke("translate-text", {
+      body: { text: originalText, targetLanguage: LANG_NAMES[getLang()] || "English" },
+    });
+    if (error || data?.error) throw new Error(data?.error || error?.message);
+    targetEl.textContent = data.translated;
+    btnEl.dataset.translated = "1";
+    btnEl.textContent = "↺";
+  } catch (err) {
+    btnEl.textContent = prevLabel;
+    alert(err.message || "Couldn't translate — please try again.");
+  } finally {
+    btnEl.disabled = false;
+  }
+}
 
 export async function initPostDetail() {
   const session = await requireAuth();
@@ -242,26 +265,43 @@ async function loadComments(postId) {
   list.innerHTML = topLevel
     .map((c) => {
       const replies = repliesByParent.get(c.id) || [];
+      const translateBtn = (id) => `<button data-translate-comment="${id}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0; text-decoration:underline;">🌐</button>`;
       const repliesHtml = replies
         .map(
           (r) => `
           <div class="card" style="margin-left:24px; margin-top:4px;">
-            <strong>${escapeHtml(r.author.username)}${verifiedBadge(r.author.is_verified)}</strong> ${linkifyCaption(r.content)}
-            <div class="muted" style="font-size:11px; display:flex; gap:8px;">${timeAgo(r.created_at)} ${likeRow(r)}</div>
+            <strong>${escapeHtml(r.author.username)}${verifiedBadge(r.author.is_verified)}</strong> <span class="comment-text" data-comment-id="${r.id}">${linkifyCaption(r.content)}</span>
+            <div class="muted" style="font-size:11px; display:flex; gap:8px;">${timeAgo(r.created_at)} ${likeRow(r)} ${translateBtn(r.id)}</div>
           </div>`
         )
         .join("");
       return `
         <div class="card" style="${c.is_pinned ? "border-color:var(--vyra-accent);" : ""}">
           ${c.is_pinned ? `<div class="muted" style="font-size:11px; margin-bottom:4px;">📌 Pinned</div>` : ""}
-          <strong>${escapeHtml(c.author.username)}${verifiedBadge(c.author.is_verified)}</strong> ${linkifyCaption(c.content)}
+          <strong>${escapeHtml(c.author.username)}${verifiedBadge(c.author.is_verified)}</strong> <span class="comment-text" data-comment-id="${c.id}">${linkifyCaption(c.content)}</span>
           <div class="muted" style="font-size:11px; display:flex; gap:8px; align-items:center;">
-            ${timeAgo(c.created_at)} · <button data-reply-to="${c.id}" data-reply-name="${escapeHtml(c.author.username)}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">Reply</button> · ${likeRow(c)}${pinRow(c)}
+            ${timeAgo(c.created_at)} · <button data-reply-to="${c.id}" data-reply-name="${escapeHtml(c.author.username)}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">Reply</button> · ${likeRow(c)}${pinRow(c)} ${translateBtn(c.id)}
           </div>
         </div>
         ${repliesHtml}`;
     })
     .join("");
+
+  const contentById = new Map(comments.map((c) => [c.id, c.content]));
+  list.querySelectorAll("[data-translate-comment]").forEach((btn) => {
+    const id = btn.dataset.translateComment;
+    const textEl = list.querySelector(`.comment-text[data-comment-id="${id}"]`);
+    const original = contentById.get(id) || "";
+    btn.addEventListener("click", () => {
+      if (btn.dataset.translated === "1") {
+        textEl.innerHTML = linkifyCaption(original);
+        btn.dataset.translated = "0";
+        btn.textContent = "🌐";
+      } else {
+        translateCommentInline(original, textEl, btn);
+      }
+    });
+  });
 
   list.querySelectorAll("[data-reply-to]").forEach((btn) => {
     btn.addEventListener("click", () => {
