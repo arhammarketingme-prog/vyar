@@ -19,7 +19,9 @@ export async function initProfile() {
   }
 
   const isOwnProfile = profile.id === session.user.id;
-  const showArchived = isOwnProfile && params.get("archived") === "1";
+  const view = isOwnProfile && params.get("archived") === "1" ? "archived"
+    : isOwnProfile && params.get("scheduled") === "1" ? "scheduled"
+    : "normal";
   renderProfile(profile, isOwnProfile, session);
   if (!isOwnProfile) {
     await renderFollowButton(profile, session);
@@ -32,8 +34,9 @@ export async function initProfile() {
     msgLink.textContent = `💬 ${t("message_btn")}`;
     slot.appendChild(msgLink);
   }
-  await renderPostsGrid(profile.id, showArchived);
+  await renderPostsGrid(profile.id, view);
   await initHighlightsBar(profile.id, isOwnProfile);
+  if (isOwnProfile && view === "normal") await renderPendingCollabInvites(session.user.id);
 }
 
 function renderProfile(profile, isOwnProfile, session) {
@@ -69,12 +72,14 @@ function renderProfile(profile, isOwnProfile, session) {
           <a href="go-live.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px; color:var(--vyra-rose);">🔴 Go Live</a>
           <a href="security.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🔒 Security</a>
           <a href="profile.html?archived=1" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">📦 Archived</a>
+          <a href="profile.html?scheduled=1" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">🕒 Scheduled</a>
           <a href="close-friends.html" class="btn btn-secondary" style="width:auto; padding:6px 14px; font-size:13px;">💚 Close Friends</a>
         </div>
       ` : ""}
       ${isOwnProfile ? `<button class="btn btn-secondary" id="logout-btn">${t("log_out")}</button>` : ""}
     </div>
     <div id="highlights-bar" class="story-bar"></div>
+    <div id="collab-invites"></div>
     <div id="posts-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;"></div>
   `;
 
@@ -206,22 +211,51 @@ async function renderTipButton(profile, session) {
   });
 }
 
-async function renderPostsGrid(authorId, showArchived = false) {
-  const { data: posts, error } = await supabase
-    .from("posts")
-    .select("id, post_type, post_media(storage_path, position, media_type)")
-    .eq("author_id", authorId)
-    .eq("is_archived", showArchived)
-    .order("created_at", { ascending: false });
+async function renderPostsGrid(authorId, view = "normal") {
+  let posts = [];
 
-  if (error || !posts) return;
+  if (view === "scheduled") {
+    const { data } = await supabase
+      .from("posts")
+      .select("id, post_type, scheduled_at, post_media(storage_path, position, media_type)")
+      .eq("author_id", authorId)
+      .eq("status", "scheduled")
+      .order("scheduled_at", { ascending: true });
+    posts = data || [];
+  } else {
+    const isArchived = view === "archived";
+    const { data: ownPosts } = await supabase
+      .from("posts")
+      .select("id, post_type, created_at, post_media(storage_path, position, media_type)")
+      .eq("author_id", authorId)
+      .eq("is_archived", isArchived)
+      .order("created_at", { ascending: false });
+    posts = ownPosts || [];
+
+    if (!isArchived) {
+      // Accepted collaborations show on this profile too, same as the author's.
+      const { data: collabRows } = await supabase
+        .from("post_collaborators")
+        .select("post:posts(id, post_type, created_at, is_archived, post_media(storage_path, position, media_type))")
+        .eq("collaborator_id", authorId)
+        .eq("status", "accepted");
+      (collabRows || [])
+        .map((r) => r.post)
+        .filter((p) => p && !p.is_archived)
+        .forEach((p) => posts.push(p));
+      posts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+  }
 
   const grid = document.getElementById("posts-grid");
-  if (showArchived) {
+  if (view !== "normal") {
     const heading = document.createElement("div");
     heading.className = "muted";
     heading.style.cssText = "grid-column:1 / -1; padding:6px 0;";
-    heading.textContent = posts.length === 0 ? "No archived posts." : "Archived posts — only visible to you.";
+    heading.textContent =
+      view === "archived"
+        ? (posts.length === 0 ? "No archived posts." : "Archived posts — only visible to you.")
+        : (posts.length === 0 ? "No scheduled posts." : "Scheduled posts — only visible to you until they post.");
     grid.parentNode.insertBefore(heading, grid);
   }
   posts.forEach((post) => {
@@ -248,6 +282,43 @@ async function renderPostsGrid(authorId, showArchived = false) {
 
     wrapper.addEventListener("click", () => (window.location.href = `post.html?id=${post.id}`));
     grid.appendChild(wrapper);
+  });
+}
+
+async function renderPendingCollabInvites(myId) {
+  const { data: invites } = await supabase
+    .from("post_collaborators")
+    .select("post_id, post:posts(id, caption, author:profiles!posts_author_id_fkey(username))")
+    .eq("collaborator_id", myId)
+    .eq("status", "pending");
+
+  const container = document.getElementById("collab-invites");
+  if (!invites || invites.length === 0 || !container) return;
+
+  container.innerHTML = invites
+    .map(
+      (inv) => `
+      <div class="card" style="margin-bottom:10px;">
+        <div style="margin-bottom:8px;">🤝 <strong>@${escapeHtml(inv.post.author.username)}</strong> invited you to co-author a post${inv.post.caption ? `: "${escapeHtml(inv.post.caption.slice(0, 60))}${inv.post.caption.length > 60 ? "…" : ""}"` : ""}</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" data-accept-collab="${inv.post_id}" style="width:auto; padding:6px 14px; font-size:13px;">Accept</button>
+          <button class="btn btn-secondary" data-decline-collab="${inv.post_id}" style="width:auto; padding:6px 14px; font-size:13px;">Decline</button>
+        </div>
+      </div>`
+    )
+    .join("");
+
+  container.querySelectorAll("[data-accept-collab]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await supabase.from("post_collaborators").update({ status: "accepted" }).eq("post_id", btn.dataset.acceptCollab).eq("collaborator_id", myId);
+      window.location.reload();
+    });
+  });
+  container.querySelectorAll("[data-decline-collab]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await supabase.from("post_collaborators").update({ status: "declined" }).eq("post_id", btn.dataset.declineCollab).eq("collaborator_id", myId);
+      window.location.reload();
+    });
   });
 }
 

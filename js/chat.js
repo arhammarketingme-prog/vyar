@@ -16,7 +16,11 @@ export async function initChat() {
 
   await loadMessages(session.user.id, otherUserId);
 
-  // Live updates: subscribe to new messages either direction between these two users.
+  const vanishToggle = document.getElementById("vanish-toggle");
+
+  // Live updates: subscribe to new + deleted messages either direction
+  // between these two users. Deletes happen a few seconds after a
+  // vanish-mode message is read.
   supabase
     .channel(`dm-${[session.user.id, otherUserId].sort().join("-")}`)
     .on(
@@ -28,6 +32,15 @@ export async function initChat() {
           (m.sender_id === session.user.id && m.recipient_id === otherUserId) ||
           (m.sender_id === otherUserId && m.recipient_id === session.user.id);
         if (involvesUs) appendMessage(m, session.user.id);
+        if (m.recipient_id === session.user.id) markRead(m.id);
+      }
+    )
+    .on(
+      "postgres_changes",
+      { event: "DELETE", schema: "public", table: "direct_messages" },
+      (payload) => {
+        const el = document.querySelector(`[data-message-id="${payload.old.id}"]`);
+        if (el) el.remove();
       }
     )
     .subscribe();
@@ -42,6 +55,7 @@ export async function initChat() {
       sender_id: session.user.id,
       recipient_id: otherUserId,
       content,
+      vanish: vanishToggle.checked,
     });
     // Realtime subscription above will render it — no need to render twice.
   });
@@ -63,15 +77,20 @@ export async function initChat() {
       recipient_id: otherUserId,
       content: "📷 Photo",
       media_url: mediaUrl,
+      vanish: vanishToggle.checked,
     });
     imageInput.value = "";
   });
 }
 
+async function markRead(messageId) {
+  await supabase.from("direct_messages").update({ read_at: new Date().toISOString() }).eq("id", messageId).is("read_at", null);
+}
+
 async function loadMessages(myId, otherUserId) {
   const { data: messages } = await supabase
     .from("direct_messages")
-    .select("id, sender_id, content, created_at, media_url")
+    .select("id, sender_id, recipient_id, content, created_at, media_url, vanish, read_at")
     .or(
       `and(sender_id.eq.${myId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${myId})`
     )
@@ -80,12 +99,17 @@ async function loadMessages(myId, otherUserId) {
   const list = document.getElementById("messages-list");
   list.innerHTML = "";
   (messages || []).forEach((m) => appendMessage(m, myId));
+
+  (messages || [])
+    .filter((m) => m.recipient_id === myId && !m.read_at)
+    .forEach((m) => markRead(m.id));
 }
 
 function appendMessage(m, myId) {
   const list = document.getElementById("messages-list");
   const isMine = m.sender_id === myId;
   const bubble = document.createElement("div");
+  bubble.dataset.messageId = m.id;
   bubble.style.cssText = `
     max-width: 75%;
     margin: 4px 0;
@@ -100,6 +124,12 @@ function appendMessage(m, myId) {
     bubble.appendChild(img);
   } else {
     bubble.textContent = m.content;
+  }
+  if (m.vanish) {
+    const tag = document.createElement("div");
+    tag.textContent = "🔥 Vanishes after read";
+    tag.style.cssText = "font-size:10px; opacity:0.75; margin-top:2px;";
+    bubble.appendChild(tag);
   }
   list.appendChild(bubble);
   list.scrollTop = list.scrollHeight;

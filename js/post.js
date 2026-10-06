@@ -44,6 +44,15 @@ export async function initPostDetail() {
     .eq("id", postId)
     .single();
 
+  if (post) {
+    const { data: collabs } = await supabase
+      .from("post_collaborators")
+      .select("collaborator:profiles!post_collaborators_collaborator_id_fkey ( username )")
+      .eq("post_id", postId)
+      .eq("status", "accepted");
+    post.collaborators = (collabs || []).map((c) => c.collaborator);
+  }
+
   if (error || !post) {
     document.getElementById("post-root").textContent = "Post not found or private.";
     return;
@@ -115,7 +124,7 @@ function renderPost(post, session) {
     <div class="card">
       <div class="post-header">
         <img class="avatar" width="36" height="36" src="${post.author.avatar_url || phAvatar(40, post.author.display_name || post.author.username)}" alt="">
-        <strong>${escapeHtml(post.author.username)}${verifiedBadge(post.author.is_verified)}</strong>
+        <strong>${escapeHtml(post.author.username)}${verifiedBadge(post.author.is_verified)}</strong>${(post.collaborators || []).length > 0 ? ` <span class="muted">with ${post.collaborators.map((c) => `@${escapeHtml(c.username)}`).join(", ")}</span>` : ""}
         <span class="muted" style="margin-left:8px;">· ${timeAgo(post.created_at)}</span>
         <div style="margin-left:auto; display:flex; gap:8px;">
           ${isOwner ? `

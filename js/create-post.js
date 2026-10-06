@@ -88,10 +88,17 @@ export async function initCreatePost() {
   // Creates one post row, uploads its media, links a product and any
   // #hashtags in the caption. If the upload fails partway, the post row
   // is removed again so nothing broken is left behind.
-  async function createAndUploadPost({ caption, postType, mediaFiles, communityId, productId, altText, onProgress }) {
+  async function createAndUploadPost({ caption, postType, mediaFiles, communityId, productId, altText, onProgress, status, scheduledAt }) {
     const { data: post, error: postErr } = await supabase
       .from("posts")
-      .insert({ author_id: session.user.id, caption, post_type: postType, community_id: communityId })
+      .insert({
+        author_id: session.user.id,
+        caption,
+        post_type: postType,
+        community_id: communityId,
+        status: status || "published",
+        scheduled_at: scheduledAt || null,
+      })
       .select()
       .single();
     if (postErr) throw postErr;
@@ -137,6 +144,17 @@ export async function initCreatePost() {
     }
   }
 
+  async function inviteCollaborator(postId, username) {
+    const { data: collabProfile } = await supabase.from("profiles").select("id").eq("username", username).single();
+    if (!collabProfile) {
+      alert(`Post shared, but couldn't find a user named "${username}" to invite as a collaborator.`);
+      return;
+    }
+    if (collabProfile.id === session.user.id) return; // can't collab with yourself
+    const { error } = await supabase.from("post_collaborators").insert({ post_id: postId, collaborator_id: collabProfile.id });
+    if (error) alert("Post shared, but the collaborator invite failed — you can try again from the post.");
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     errEl.classList.add("hidden");
@@ -163,6 +181,12 @@ export async function initCreatePost() {
           `Please convert it to MP4 first (most phones save in MP4 by default) and try again.`
         );
       }
+
+      const scheduleVal = document.getElementById("schedule-input").value;
+      const scheduledAt = scheduleVal && new Date(scheduleVal) > new Date() ? new Date(scheduleVal).toISOString() : null;
+      const status = scheduledAt ? "scheduled" : "published";
+      const collaboratorUsername = document.getElementById("collaborator-input").value.trim();
+      let lastPostId = null;
 
       if (postType === "reel") {
         // Peek at duration first so we can warn about a long wait before
@@ -196,13 +220,17 @@ export async function initCreatePost() {
         for (let p = 0; p < parts.length; p++) {
           const partCaption = parts.length > 1 ? `${caption} (Part ${p + 1}/${parts.length})`.trim() : caption;
           submitBtn.textContent = parts.length > 1 ? `Uploading part ${p + 1}/${parts.length}... 0%` : "Uploading... 0%";
-          await createAndUploadPost({
+          lastPostId = await createAndUploadPost({
             caption: partCaption,
             postType: "reel",
             mediaFiles: [parts[p]],
             communityId,
             productId,
             altText: null,
+            // Scheduling/collab only make sense for a single-part reel —
+            // skip them for a multi-part split to keep things simple.
+            status: parts.length === 1 ? status : "published",
+            scheduledAt: parts.length === 1 ? scheduledAt : null,
             onProgress: (frac) => {
               const pct = Math.round(frac * 100);
               submitBtn.textContent = parts.length > 1
@@ -213,18 +241,29 @@ export async function initCreatePost() {
         }
       } else {
         submitBtn.textContent = "Uploading... 0%";
-        await createAndUploadPost({
+        lastPostId = await createAndUploadPost({
           caption,
           postType: "post",
           mediaFiles: files,
           communityId,
           productId,
           altText: form.alt_text.value.trim(),
+          status,
+          scheduledAt,
           onProgress: (frac) => { submitBtn.textContent = `Uploading... ${Math.round(frac * 100)}%`; },
         });
       }
 
-      window.location.href = postType === "reel" ? "reels.html" : "feed.html";
+      if (collaboratorUsername && lastPostId) {
+        await inviteCollaborator(lastPostId, collaboratorUsername);
+      }
+
+      if (scheduledAt) {
+        alert("Scheduled! This will post automatically at the time you chose.");
+        window.location.href = "profile.html?scheduled=1";
+      } else {
+        window.location.href = postType === "reel" ? "reels.html" : "feed.html";
+      }
     } catch (err) {
       showError(errEl, err);
       alert("Post failed: " + (err?.message || "Unknown error") + "\n\nPlease try again.");

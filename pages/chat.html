@@ -18,9 +18,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div style="padding:12px; border-bottom:1px solid var(--vyra-border);">
+  <div style="padding:12px; border-bottom:1px solid var(--vyra-border); display:flex; align-items:center;">
     <a href="messages.html" style="color:var(--vyra-accent);">← Back</a>
     <strong id="chat-header" style="margin-left:8px;">Loading...</strong>
+    <label style="margin-left:auto; display:flex; align-items:center; gap:5px; font-size:12.5px; cursor:pointer;" class="muted">
+      <input type="checkbox" id="vanish-toggle" style="accent-color:var(--vyra-rose);">
+      🔥 Vanish mode
+    </label>
   </div>
   <div id="messages-list"></div>
   <form id="chat-form">
