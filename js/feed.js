@@ -224,23 +224,63 @@ export async function loadRecommended() {
 
   if (error || !posts) return;
 
+  // Things this user asked to see less of — applied as a flat, visible
+  // penalty (not hidden magic), and explained in each post's "Why this?".
+  const { data: prefRows } = await supabase
+    .from("content_preferences")
+    .select("target_type, target_value")
+    .eq("user_id", session.user.id);
+  const lessAuthors = new Set((prefRows || []).filter((r) => r.target_type === "author").map((r) => r.target_value));
+  const lessTags = new Set((prefRows || []).filter((r) => r.target_type === "hashtag").map((r) => r.target_value));
+  const SHOW_LESS_MULTIPLIER = 0.1;
+
   const now = Date.now();
   const scored = posts.map((p) => {
     const ageHours = (now - new Date(p.created_at).getTime()) / 3600000;
     const engagement = p.like_count * 2 + p.comment_count * 3 + p.save_count * 4;
-    const score = engagement / Math.pow(ageHours + 2, 1.3); // decay favors recent + engaging
-    return { post: p, score };
+    let score = engagement / Math.pow(ageHours + 2, 1.3); // decay favors recent + engaging
+
+    const tagsInCaption = [...(p.caption || "").matchAll(/#(\w+)/g)].map((m) => m[1].toLowerCase());
+    const matchedTags = tagsInCaption.filter((t) => lessTags.has(t));
+    const authorMuted = lessAuthors.has(p.author.username);
+    const penalized = authorMuted || matchedTags.length > 0;
+    if (penalized) score *= SHOW_LESS_MULTIPLIER;
+
+    return { post: p, score, penalized, authorMuted, matchedTags };
   });
 
   scored.sort((a, b) => b.score - a.score);
   scored.slice(0, 20).forEach((s) => {
     const ageHours = Math.round((now - new Date(s.post.created_at).getTime()) / 3600000);
-    const why = `Shown because: ${s.post.like_count} likes, ${s.post.comment_count} comments, ${s.post.save_count} saves, posted ${ageHours}h ago.\n\nFormula (same for every post, no hidden personalization): (likes×2 + comments×3 + saves×4) ÷ (hours old + 2)^1.3 = ${s.score.toFixed(2)}`;
-    renderPost(s.post, why);
+    let why = `Shown because: ${s.post.like_count} likes, ${s.post.comment_count} comments, ${s.post.save_count} saves, posted ${ageHours}h ago.\n\nFormula (same for every post, no hidden personalization): (likes×2 + comments×3 + saves×4) ÷ (hours old + 2)^1.3 = ${s.score.toFixed(2)}`;
+    if (s.penalized) {
+      const reasons = [s.authorMuted ? `@${s.post.author.username}` : null, ...s.matchedTags.map((t) => `#${t}`)].filter(Boolean).join(", ");
+      why += `\n\nYou asked to see less of: ${reasons} — so this post's score was multiplied by ${SHOW_LESS_MULTIPLIER} (pushed way down).`;
+    }
+    renderPost(s.post, why, true);
   });
 }
 
-function renderPost(post, whyShown) {
+async function showLessLikeThis(post) {
+  const tags = [...new Set([...(post.caption || "").matchAll(/#(\w+)/g)].map((m) => m[1].toLowerCase()))];
+  const options = [`1) Less from @${post.author.username}`, ...tags.map((t, i) => `${i + 2}) Less of #${t}`)];
+  const choice = prompt(`Show less like this — pick one:\n\n${options.join("\n")}\n\n(Type the number. You can undo these any time in Edit Profile → Feed preferences.)`);
+  if (!choice) return;
+  const idx = parseInt(choice, 10) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= options.length) return;
+
+  const row = idx === 0
+    ? { user_id: session.user.id, target_type: "author", target_value: post.author.username }
+    : { user_id: session.user.id, target_type: "hashtag", target_value: tags[idx - 1] };
+  const { error } = await supabase.from("content_preferences").upsert(row);
+  if (error) {
+    alert("Couldn't save that — please try again.");
+    return;
+  }
+  alert("Got it — you'll see less of this in Recommended. (Refresh the tab to see the effect.)");
+}
+
+function renderPost(post, whyShown, isRecommended = false) {
   const feedEl = document.getElementById("feed");
   const mediaList = (post.post_media || []).sort((a, b) => a.position - b.position);
   const likedByMe = (post.likes || []).some((l) => l.user_id === session.user.id);
@@ -269,10 +309,14 @@ function renderPost(post, whyShown) {
     ${post.caption ? `<button type="button" class="translate-btn muted" style="background:none; border:none; padding:0; margin-top:2px; font-size:11.5px; text-decoration:underline; cursor:pointer;">🌐 Translate</button>` : ""}
     <a href="post.html?id=${post.id}" class="muted comment-count" style="display:block; margin-top:4px;">View all ${post.comment_count} comments</a>
     ${whyShown ? `<button type="button" class="why-shown-btn muted" style="background:none; border:none; padding:0; margin-top:4px; font-size:11.5px; text-decoration:underline; cursor:pointer;">ⓘ Why this?</button>` : ""}
+    ${isRecommended ? `<button type="button" class="show-less-btn muted" style="background:none; border:none; padding:0; margin:4px 0 0 10px; font-size:11.5px; text-decoration:underline; cursor:pointer;">👎 Show less</button>` : ""}
   `;
 
   if (whyShown) {
     el.querySelector(".why-shown-btn").addEventListener("click", () => alert(whyShown));
+  }
+  if (isRecommended) {
+    el.querySelector(".show-less-btn").addEventListener("click", () => showLessLikeThis(post));
   }
 
   const translateBtn = el.querySelector(".translate-btn");

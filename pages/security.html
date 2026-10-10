@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#f0a83a">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<link rel="icon" href="../icons/icon-192.png">
+
 <title>Security — VYRA</title>
 <link rel="stylesheet" href="../css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -19,10 +24,34 @@
         <div id="qr-wrap" style="margin-top:12px; text-align:center;"></div>
       </div>
     </div>
+
+    <div class="card">
+      <h3>Your data</h3>
+      <p class="muted">Download everything that's yours — profile, posts, comments, followers, messages, collections — as one file. Instant, free, any time.</p>
+      <button id="export-data-btn" class="btn btn-secondary">⬇️ Download my data</button>
+      <div id="export-status" class="muted" style="margin-top:8px; font-size:12.5px;"></div>
+    </div>
   </div>
   <script type="module">
     import { initSecurity } from "../js/security.js";
+    import { supabase, requireAuth } from "../js/supabaseClient.js";
+    import { exportMyData } from "../js/data-export.js";
     initSecurity();
+
+    document.getElementById("export-data-btn").addEventListener("click", async () => {
+      const session = await requireAuth();
+      if (!session) return;
+      const btn = document.getElementById("export-data-btn");
+      const status = document.getElementById("export-status");
+      btn.disabled = true;
+      try {
+        await exportMyData(session.user.id, (t) => (status.textContent = t));
+      } catch (err) {
+        status.textContent = "Couldn't export your data — please try again.";
+      } finally {
+        btn.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>

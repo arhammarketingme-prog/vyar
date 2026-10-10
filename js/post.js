@@ -206,12 +206,20 @@ function linkifyCaption(text) {
 async function renderCollectionPicker(postId) {
   const slot = document.getElementById("collection-picker-slot");
   const { data: { session } } = await supabase.auth.getSession();
-  const { data: collections } = await supabase
+  const { data: owned } = await supabase
     .from("collections")
     .select("id, name")
     .eq("owner_id", session.user.id);
+  const { data: sharedRows } = await supabase
+    .from("collection_members")
+    .select("collection:collections(id, name)")
+    .eq("user_id", session.user.id);
+  const collections = [
+    ...(owned || []),
+    ...(sharedRows || []).map((r) => r.collection && { ...r.collection, name: `${r.collection.name} (shared)` }).filter(Boolean),
+  ];
 
-  const options = (collections || []).map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  const options = collections.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
   slot.innerHTML = `
     <div style="display:flex; gap:8px; margin-top:10px;">
       <select id="collection-select" style="margin-bottom:0;">
@@ -239,7 +247,7 @@ async function loadComments(postId) {
   const { data: { session } } = await supabase.auth.getSession();
   const { data: comments, error } = await supabase
     .from("comments")
-    .select(`id, content, created_at, parent_comment_id, like_count, is_pinned, author:profiles!comments_author_id_fkey ( username, is_verified ), comment_likes ( user_id )`)
+    .select(`id, content, created_at, parent_comment_id, like_count, is_pinned, link_risk, author:profiles!comments_author_id_fkey ( username, is_verified ), comment_likes ( user_id )`)
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
@@ -275,11 +283,15 @@ async function loadComments(postId) {
     .map((c) => {
       const replies = repliesByParent.get(c.id) || [];
       const translateBtn = (id) => `<button data-translate-comment="${id}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0; text-decoration:underline;">🌐</button>`;
+      const riskBadge = (risk) =>
+        risk === "dangerous" ? ` <span style="color:var(--vyra-rose); font-size:11px; font-weight:700;">⚠️ Likely scam link</span>`
+        : risk === "suspicious" ? ` <span style="color:var(--vyra-accent); font-size:11px; font-weight:700;">⚠️ Unverified link</span>`
+        : "";
       const repliesHtml = replies
         .map(
           (r) => `
           <div class="card" style="margin-left:24px; margin-top:4px;">
-            <strong>${escapeHtml(r.author.username)}${verifiedBadge(r.author.is_verified)}</strong> <span class="comment-text" data-comment-id="${r.id}">${linkifyCaption(r.content)}</span>
+            <strong>${escapeHtml(r.author.username)}${verifiedBadge(r.author.is_verified)}</strong> <span class="comment-text" data-comment-id="${r.id}">${linkifyCaption(r.content)}</span>${riskBadge(r.link_risk)}
             <div class="muted" style="font-size:11px; display:flex; gap:8px;">${timeAgo(r.created_at)} ${likeRow(r)} ${translateBtn(r.id)}</div>
           </div>`
         )
@@ -287,7 +299,7 @@ async function loadComments(postId) {
       return `
         <div class="card" style="${c.is_pinned ? "border-color:var(--vyra-accent);" : ""}">
           ${c.is_pinned ? `<div class="muted" style="font-size:11px; margin-bottom:4px;">📌 Pinned</div>` : ""}
-          <strong>${escapeHtml(c.author.username)}${verifiedBadge(c.author.is_verified)}</strong> <span class="comment-text" data-comment-id="${c.id}">${linkifyCaption(c.content)}</span>
+          <strong>${escapeHtml(c.author.username)}${verifiedBadge(c.author.is_verified)}</strong> <span class="comment-text" data-comment-id="${c.id}">${linkifyCaption(c.content)}</span>${riskBadge(c.link_risk)}
           <div class="muted" style="font-size:11px; display:flex; gap:8px; align-items:center;">
             ${timeAgo(c.created_at)} · <button data-reply-to="${c.id}" data-reply-name="${escapeHtml(c.author.username)}" style="background:none; border:none; color:var(--vyra-text-dim); cursor:pointer; padding:0;">Reply</button> · ${likeRow(c)}${pinRow(c)} ${translateBtn(c.id)}
           </div>
@@ -343,6 +355,15 @@ async function loadComments(postId) {
   });
 }
 
+async function scanForRisk(text) {
+  try {
+    const { data } = await supabase.functions.invoke("scan-link", { body: { text } });
+    return data?.risk || null;
+  } catch {
+    return null; // fail open — never block posting over a safety-check hiccup
+  }
+}
+
 function bindCommentForm(postId, session) {
   const form = document.getElementById("comment-form");
   const errEl = document.getElementById("comment-error");
@@ -351,11 +372,13 @@ function bindCommentForm(postId, session) {
     const content = form.content.value.trim();
     if (!content) return;
     const parentId = form.content.dataset.parentId || null;
+    const linkRisk = await scanForRisk(content);
     const { error } = await supabase.from("comments").insert({
       post_id: postId,
       author_id: session.user.id,
       content,
       parent_comment_id: parentId,
+      link_risk: linkRisk,
     });
     if (error) {
       showError(errEl, error);

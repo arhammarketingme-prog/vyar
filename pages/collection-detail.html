@@ -14,6 +14,17 @@
 <body>
   <div class="container">
     <h1 id="collection-title" style="color:var(--vyra-accent); font-size:22px;">Loading...</h1>
+
+    <div id="members-section" class="card hidden" style="margin-bottom:14px;">
+      <div class="muted" style="margin-bottom:6px;">👥 Shared with</div>
+      <div id="members-list" style="font-size:13px; margin-bottom:8px;"></div>
+      <div id="invite-row" style="display:none; gap:8px;">
+        <input type="text" id="invite-username" placeholder="Invite by username" style="margin-bottom:0;">
+        <button id="invite-btn" class="btn" style="width:auto;">Invite</button>
+      </div>
+      <div id="invite-msg" class="muted" style="font-size:12px; margin-top:6px;"></div>
+    </div>
+
     <div id="collection-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;"></div>
   </div>
   <nav class="bottom-nav">

@@ -15,6 +15,40 @@ export async function initEditProfile() {
 
   document.getElementById("language-select").value = profile.preferred_language || getLang();
 
+  async function renderFeedPrefs() {
+    const listEl = document.getElementById("feed-prefs-list");
+    const { data: prefs } = await supabase
+      .from("content_preferences")
+      .select("target_type, target_value")
+      .eq("user_id", session.user.id)
+      .order("created_at", { ascending: false });
+    if (!prefs || prefs.length === 0) {
+      listEl.textContent = "Nothing yet — use 👎 Show less on any Recommended post.";
+      return;
+    }
+    listEl.innerHTML = prefs
+      .map(
+        (p) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0;">
+          <span>${p.target_type === "author" ? "@" : "#"}${p.target_value.replace(/</g, "&lt;")}</span>
+          <button type="button" data-remove-pref-type="${p.target_type}" data-remove-pref-value="${p.target_value.replace(/"/g, "&quot;")}" style="background:none; border:none; color:var(--vyra-accent-2); cursor:pointer;">Remove</button>
+        </div>`
+      )
+      .join("");
+    listEl.querySelectorAll("[data-remove-pref-type]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await supabase
+          .from("content_preferences")
+          .delete()
+          .eq("user_id", session.user.id)
+          .eq("target_type", btn.dataset.removePrefType)
+          .eq("target_value", btn.dataset.removePrefValue);
+        renderFeedPrefs();
+      });
+    });
+  }
+  renderFeedPrefs();
+
   const locStatus = document.getElementById("location-status");
   if (profile.latitude != null && profile.longitude != null) {
     locStatus.textContent = "✅ Location shared — you'll show up in \"Nearby\".";

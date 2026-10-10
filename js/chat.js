@@ -51,11 +51,13 @@ export async function initChat() {
     const content = form.content.value.trim();
     if (!content) return;
     form.content.value = "";
+    const linkRisk = await scanForRisk(content);
     await supabase.from("direct_messages").insert({
       sender_id: session.user.id,
       recipient_id: otherUserId,
       content,
       vanish: vanishToggle.checked,
+      link_risk: linkRisk,
     });
     // Realtime subscription above will render it — no need to render twice.
   });
@@ -83,6 +85,15 @@ export async function initChat() {
   });
 }
 
+async function scanForRisk(text) {
+  try {
+    const { data } = await supabase.functions.invoke("scan-link", { body: { text } });
+    return data?.risk || null;
+  } catch {
+    return null;
+  }
+}
+
 async function markRead(messageId) {
   await supabase.from("direct_messages").update({ read_at: new Date().toISOString() }).eq("id", messageId).is("read_at", null);
 }
@@ -90,7 +101,7 @@ async function markRead(messageId) {
 async function loadMessages(myId, otherUserId) {
   const { data: messages } = await supabase
     .from("direct_messages")
-    .select("id, sender_id, recipient_id, content, created_at, media_url, vanish, read_at")
+    .select("id, sender_id, recipient_id, content, created_at, media_url, vanish, read_at, link_risk")
     .or(
       `and(sender_id.eq.${myId},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${myId})`
     )
@@ -124,6 +135,14 @@ function appendMessage(m, myId) {
     bubble.appendChild(img);
   } else {
     bubble.textContent = m.content;
+  }
+  if (m.link_risk && !isMine) {
+    const warn = document.createElement("div");
+    warn.textContent = m.link_risk === "dangerous"
+      ? "⚠️ This message looks like a scam — don't open the link or share any details."
+      : "⚠️ Unverified link — be careful before opening it.";
+    warn.style.cssText = `font-size:11px; font-weight:700; margin-top:4px; color:${m.link_risk === "dangerous" ? "var(--vyra-rose)" : "var(--vyra-accent)"};`;
+    bubble.appendChild(warn);
   }
   if (m.vanish) {
     const tag = document.createElement("div");
